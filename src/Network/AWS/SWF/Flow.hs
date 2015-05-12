@@ -1,7 +1,8 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Network.AWS.SWF.Flow
-  ( defaultConfig
+  ( hoistMaybeToEither
+  , defaultConfig
   , execute
   , act
   , decide
