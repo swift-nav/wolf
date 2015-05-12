@@ -66,7 +66,9 @@ decide config domain spec =
           go Work {..} = go wrkNext
           go _ = Nothing
 
-      schedule taskToken input =
+      -- todo: expand schedule to handle continue, sleep
+      -- do a better job of doing only the needed work
+      schedule taskToken events input strtTask =
         go where
           go Work {..} =
             EitherT $ runRespondDecisionTaskCompleted ctxEnv taskToken
@@ -78,9 +80,19 @@ decide config domain spec =
           go Sleep {..} =
             EitherT $ runRespondDecisionTaskCompleted ctxEnv taskToken
               [startTimer ctxUid (tmrTimeout slpTimer) (tmrName slpTimer)]
-          go Continue = return ()
-          go Done = return ()
-          go _ = left (error "Bad Schedule Spec")
+          go Continue = do
+            attrs <- hoistMaybeToEither (error "No Events") $ do
+              event <- nextEventType [WorkflowExecutionStarted] events
+              event ^. heWorkflowExecutionStartedEventAttributes
+            EitherT $ runRespondDecisionTaskCompleted ctxEnv taskToken
+              [continueAsNewWorkflowExecution
+                (tskVersion strtTask)
+                (tskList strtTask)
+                (attrs ^. weseaInput)]
+          go Done =
+            return ()
+          go _ =
+            left (error "Bad Schedule Spec")
     in
     runEitherT $
       case spec of
@@ -94,7 +106,7 @@ decide config domain spec =
             WorkflowExecutionStarted -> do
               attrs <- hoistMaybeToEither (error "No Attributes") $
                 event ^. heWorkflowExecutionStartedEventAttributes
-              schedule taskToken (attrs ^. weseaInput) strtNext
+              schedule taskToken events (attrs ^. weseaInput) strtTask strtNext
             ActivityTaskCompleted -> do
               attrs <- hoistMaybeToEither (error "No Attributes") $
                 event ^. heActivityTaskCompletedEventAttributes
@@ -102,7 +114,7 @@ decide config domain spec =
                 event' <- lookup (attrs ^. atceaScheduledEventId) eventMap
                 attrs' <- event' ^. heActivityTaskScheduledEventAttributes
                 findWork (attrs' ^. atseaActivityType ^. atName)
-              schedule taskToken (attrs ^. atceaResult) nextSpec
+              schedule taskToken events (attrs ^. atceaResult) strtTask nextSpec
             TimerFired -> do
               attrs <- hoistMaybeToEither (error "No Attributes") $
                 event ^. heTimerFiredEventAttributes
@@ -117,11 +129,11 @@ decide config domain spec =
                 WorkflowExecutionStarted -> do
                   attrs'' <- hoistMaybeToEither (error "No Attributes") $
                     event' ^. heWorkflowExecutionStartedEventAttributes
-                  schedule taskToken (attrs'' ^. weseaInput) nextSpec
+                  schedule taskToken events (attrs'' ^. weseaInput) strtTask nextSpec
                 ActivityTaskCompleted -> do
                   attrs'' <- hoistMaybeToEither (error "No Attributes") $
                     event' ^. heActivityTaskCompletedEventAttributes
-                  schedule taskToken (attrs'' ^. atceaResult) nextSpec
+                  schedule taskToken events (attrs'' ^. atceaResult) strtTask nextSpec
                 _ ->
                   left (error "Unknown Event")
             _ ->
