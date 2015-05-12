@@ -8,6 +8,7 @@ module Network.AWS.SWF.Flow
   ) where
 
 import Control.Lens                         ( (^.) )
+import Control.Monad.IO.Class               ( liftIO )
 import Control.Monad.Trans.Either           ( EitherT(..), hoistEither, left )
 import Data.HashMap.Strict                  ( fromList, lookup )
 import Data.List                            ( find )
@@ -77,17 +78,20 @@ decide config domain spec =
 
           let schedule input =
                 go where
-                  go Work {..} =
+                  go Work {..} = do
+                    liftIO $ putStrLn $ "Scheduling Work " ++ show (tskName wrkTask)
                     EitherT $ runRespondDecisionTaskCompleted ctxEnv taskToken
                       [scheduleActivityTask ctxUid
                         (tskName wrkTask)
                         (tskVersion wrkTask)
                         (tskList wrkTask)
                         input]
-                  go Sleep {..} =
+                  go Sleep {..} = do
+                    liftIO $ putStrLn $ "Scheduling Sleep " ++ show (tmrName slpTimer)
                     EitherT $ runRespondDecisionTaskCompleted ctxEnv taskToken
                       [startTimer ctxUid (tmrTimeout slpTimer) (tmrName slpTimer)]
                   go Continue = do
+                    liftIO $ putStrLn $ "Continuing " ++ show (tskName strtTask)
                     attrs <- hoistMaybeToEither (error "No Events") $ do
                       event <- nextEventType [WorkflowExecutionStarted] events
                       event ^. heWorkflowExecutionStartedEventAttributes
@@ -96,7 +100,8 @@ decide config domain spec =
                         (tskVersion strtTask)
                         (tskList strtTask)
                         (attrs ^. weseaInput)]
-                  go Done =
+                  go Done = do
+                    liftIO $ putStrLn $ "Done " ++ show input
                     return ()
                   go _ =
                     left (error "Bad Schedule Spec")
@@ -105,10 +110,12 @@ decide config domain spec =
             nextEventType [WorkflowExecutionStarted, ActivityTaskCompleted, TimerFired] events
           case event ^. heEventType of
             WorkflowExecutionStarted -> do
+              liftIO $ putStrLn $ "Got WorkflowExecutionStarted Event"
               attrs <- hoistMaybeToEither (error "No Attributes") $
                 event ^. heWorkflowExecutionStartedEventAttributes
               schedule (attrs ^. weseaInput) strtNext
             ActivityTaskCompleted -> do
+              liftIO $ putStrLn $ "Got ActivityTaskCompleted Event"
               attrs <- hoistMaybeToEither (error "No Attributes") $
                 event ^. heActivityTaskCompletedEventAttributes
               nextSpec <- hoistMaybeToEither (error "No Completed Spec") $ do
@@ -117,6 +124,7 @@ decide config domain spec =
                 findWork (attrs' ^. atseaActivityType ^. atName)
               schedule (attrs ^. atceaResult) nextSpec
             TimerFired -> do
+              liftIO $ putStrLn $ "Got TimerFired Event"
               attrs <- hoistMaybeToEither (error "No Attributes") $
                 event ^. heTimerFiredEventAttributes
               nextSpec <- hoistMaybeToEither (error "No Timer Spec") $ do
@@ -128,10 +136,12 @@ decide config domain spec =
                 nextEventType [WorkflowExecutionStarted, ActivityTaskCompleted] events
               case event' ^. heEventType of
                 WorkflowExecutionStarted -> do
+                  liftIO $ putStrLn $ "Awake From WorkflowExecutionStarted Event"
                   attrs'' <- hoistMaybeToEither (error "No Attributes") $
                     event' ^. heWorkflowExecutionStartedEventAttributes
                   schedule (attrs'' ^. weseaInput) nextSpec
                 ActivityTaskCompleted -> do
+                  liftIO $ putStrLn $ "Awake From ActivityTaskCompleted Event"
                   attrs'' <- hoistMaybeToEither (error "No Attributes") $
                     event' ^. heActivityTaskCompletedEventAttributes
                   schedule (attrs'' ^. atceaResult) nextSpec
