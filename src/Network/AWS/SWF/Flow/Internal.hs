@@ -16,8 +16,18 @@ import Network.AWS.SWF
 import Network.AWS.SWF.Flow.Types
 import Network.HTTP.Conduit       ( conduitManagerSettings )
 import Network.HTTP.Client        ( ManagerSettings(..), withManager )
+import System.IO                  ( stdout )
 
 -- Helpers
+
+defaultConfig :: Config
+defaultConfig = Config
+  NorthVirginia
+  (FromEnv (pack "AWS_ACCESS_KEY_ID") (pack "AWS_SECRET_ACCESS_KEY"))
+  5000000
+  70000000
+  Info
+  stdout
 
 withContext :: Config -> (Context -> IO a) -> IO a
 withContext Config {..} action =

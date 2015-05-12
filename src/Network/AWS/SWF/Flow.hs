@@ -1,7 +1,8 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Network.AWS.SWF.Flow
-  ( execute
+  ( defaultConfig
+  , execute
   , act
   , decide
   ) where
@@ -16,11 +17,15 @@ import Network.AWS.SWF
 import Network.AWS.SWF.Flow.Types
 import Network.AWS.SWF.Flow.Internal
 
+-- Helpers
+
 maybeToEither :: e -> Maybe a -> Either e a
 maybeToEither e a = maybe (Left e) Right a
 
 hoistMaybeToEither :: e -> Maybe a -> EitherT e IO a
 hoistMaybeToEither e = hoistEither . maybeToEither e
+
+-- Interface
 
 execute :: Config -> Text -> Task -> Maybe Text -> IO (EitherE ())
 execute config domain Task {..} input =
