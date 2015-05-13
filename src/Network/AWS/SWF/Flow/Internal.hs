@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Network.AWS.SWF.Flow.Internal where
@@ -48,10 +49,25 @@ withContext Config {..} action =
 
 -- Runners
 
+runRegisterDomain :: Env -> Text -> IO (EitherE ())
+runRegisterDomain env domain =
+  runAWST env $
+    send_ $ registerDomain domain "30"
+
+runRegisterActivityType :: Env -> Text -> Text -> Text -> IO (EitherE ())
+runRegisterActivityType env domain name version =
+  runAWST env $
+    send_ $ registerActivityType domain name version
+
+runRegisterWorkflowType :: Env -> Text -> Text -> Text -> IO (EitherE ())
+runRegisterWorkflowType env domain name version =
+  runAWST env $
+    send_ $ registerWorkflowType domain name version
+
 runStartWorkflowExecution :: Env -> Text -> Text -> Text -> Text -> Text -> Maybe Text -> IO (EitherE ())
 runStartWorkflowExecution env domain uid name version list input =
   runAWST env $
-    send_ $ startWorkflowExecution  domain uid (workflowType name version) &
+    send_ $ startWorkflowExecution domain uid (workflowType name version) &
       swe1TaskList .~ Just (taskList list) &
       swe1Input .~ input
 

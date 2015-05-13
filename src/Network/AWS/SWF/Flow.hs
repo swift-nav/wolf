@@ -3,6 +3,7 @@
 module Network.AWS.SWF.Flow
   ( hoistMaybeToEither
   , defaultConfig
+  , register
   , execute
   , act
   , decide
@@ -28,6 +29,23 @@ hoistMaybeToEither :: e -> Maybe a -> EitherT e IO a
 hoistMaybeToEither e = hoistEither . maybeToEither e
 
 -- Interface
+
+register :: Config -> Text -> Spec -> IO (EitherE ())
+register config domain spec =
+  withContext config $ \Context {..} ->
+    runEitherT $ do
+      let runRegister =
+            go spec where
+              go Start {..} = do
+                EitherT $ runRegisterWorkflowType ctxEnv domain (tskName strtTask) (tskVersion strtTask)
+                go strtNext
+              go Work {..} = do
+                EitherT $ runRegisterActivityType ctxEnv domain (tskName wrkTask) (tskVersion wrkTask)
+                go wrkNext
+              go Sleep {..} = go slpNext
+              go _ = return ()
+      EitherT $ runRegisterDomain ctxEnv domain
+      runRegister
 
 execute :: Config -> Text -> Task -> Maybe Text -> IO (EitherE ())
 execute config domain Task {..} input =
