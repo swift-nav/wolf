@@ -9,6 +9,7 @@ module Network.AWS.SWF.Flow
   , decide
   ) where
 
+import Control.Applicative                  ( (<$>), (<*>) )
 import Control.Lens                         ( (^.) )
 import Control.Monad.IO.Class               ( liftIO )
 import Control.Monad.Trans.Either           ( EitherT(..), hoistEither, left )
@@ -30,21 +31,26 @@ hoistMaybeToEither e = hoistEither . maybeToEither e
 
 -- Interface
 
-register :: Config -> Text -> Spec -> IO ()
+register :: Config -> Text -> Spec -> IO [EitherE ()]
 register config domain spec =
-  withContext config $ \Context {..} -> do
-    let runRegister =
-          go spec where
-            go Start {..} = do
-              runRegisterWorkflowType ctxEnv domain (tskName strtTask) (tskVersion strtTask) >>= print
-              go strtNext
-            go Work {..} = do
-              runRegisterActivityType ctxEnv domain (tskName wrkTask) (tskVersion wrkTask) >>= print
-              go wrkNext
-            go Sleep {..} = go slpNext
-            go _ = return ()
-    runRegisterDomain ctxEnv domain >>= print
-    runRegister
+  withContext config $ \Context {..} ->
+    let
+      runRegister =
+        go spec where
+          go Start {..} =
+            (:) <$> runRegisterWorkflowType ctxEnv domain
+                      (tskName strtTask)
+                      (tskVersion strtTask)
+                <*> go strtNext
+          go Work {..} =
+            (:) <$> runRegisterActivityType ctxEnv domain
+                      (tskName wrkTask)
+                      (tskVersion wrkTask)
+                <*> go wrkNext
+          go Sleep {..} = go slpNext
+          go _ = return []
+    in
+      (:) <$> runRegisterDomain ctxEnv domain <*> runRegister where
 
 execute :: Config -> Text -> Task -> Maybe Text -> IO (EitherE ())
 execute config domain Task {..} input =
