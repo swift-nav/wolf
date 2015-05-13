@@ -30,22 +30,21 @@ hoistMaybeToEither e = hoistEither . maybeToEither e
 
 -- Interface
 
-register :: Config -> Text -> Spec -> IO (EitherE ())
+register :: Config -> Text -> Spec -> IO ()
 register config domain spec =
-  withContext config $ \Context {..} ->
-    runEitherT $ do
-      let runRegister =
-            go spec where
-              go Start {..} = do
-                EitherT $ runRegisterWorkflowType ctxEnv domain (tskName strtTask) (tskVersion strtTask)
-                go strtNext
-              go Work {..} = do
-                EitherT $ runRegisterActivityType ctxEnv domain (tskName wrkTask) (tskVersion wrkTask)
-                go wrkNext
-              go Sleep {..} = go slpNext
-              go _ = return ()
-      EitherT $ runRegisterDomain ctxEnv domain
-      runRegister
+  withContext config $ \Context {..} -> do
+    let runRegister =
+          go spec where
+            go Start {..} = do
+              runRegisterWorkflowType ctxEnv domain (tskName strtTask) (tskVersion strtTask) >>= print
+              go strtNext
+            go Work {..} = do
+              runRegisterActivityType ctxEnv domain (tskName wrkTask) (tskVersion wrkTask) >>= print
+              go wrkNext
+            go Sleep {..} = go slpNext
+            go _ = return ()
+    runRegisterDomain ctxEnv domain >>= print
+    runRegister
 
 execute :: Config -> Text -> Task -> Maybe Text -> IO (EitherE ())
 execute config domain Task {..} input =
