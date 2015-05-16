@@ -11,6 +11,7 @@ import Control.Monad.Reader        ( ReaderT, MonadReader )
 import Control.Monad.Trans.AWS     ( Credentials, Env, Error, LogLevel, Region )
 import Control.Monad.Trans.Control ( MonadBaseControl )
 import Data.Text                   ( Text )
+import Network.AWS.SWF.Types       ( HistoryEvent )
 import System.IO                   ( Handle )
 
 type Domain   = Text
@@ -80,3 +81,23 @@ data Spec
   { slpTimer :: Timer
   , slpNext  :: Spec
   } deriving ( Eq, Read, Show )
+
+data Store = Store
+  { strUid       :: Uid
+  , strSpec      :: Spec
+  , strEvents    :: [HistoryEvent]
+  , strFindEvent :: (Integer -> Maybe HistoryEvent)
+  }
+
+newtype ChoiceT m a = ChoiceT
+  { unChoiceT :: ReaderT Store (ExceptT FlowError m) a
+  } deriving ( Functor, Applicative, Monad, MonadIO, MonadCatch, MonadThrow, MonadError FlowError )
+
+type MonadChoice m =
+  ( MonadBaseControl IO m
+  , MonadCatch m
+  , MonadIO m
+  , MonadReader Store m
+  , MonadError FlowError m
+  )
+

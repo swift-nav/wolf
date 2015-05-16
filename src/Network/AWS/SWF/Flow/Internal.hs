@@ -8,6 +8,7 @@
 
 module Network.AWS.SWF.Flow.Internal
   ( runFlowT
+  , runChoiceT
   , registerDomainAction
   , registerActivityTypeAction
   , registerWorkflowTypeAction
@@ -44,7 +45,8 @@ import Data.Conduit.List           ( consume )
 import Data.Maybe                  ( listToMaybe )
 import Network.AWS.SWF
 import Network.AWS.SWF.Flow.Types
-import System.IO                   ( stdout )
+
+-- FlowT
 
 instance MonadBase b m => MonadBase b (FlowT m) where
     liftBase = liftBaseDefault
@@ -74,10 +76,43 @@ instance Monad m => MonadReader Context (FlowT m) where
   ask = FlowT ask
   local f = FlowT . local f . unFlowT
 
+-- ChoiceT
+
+instance MonadBase b m => MonadBase b (ChoiceT m) where
+    liftBase = liftBaseDefault
+
+instance MonadBaseControl b m => MonadBaseControl b (ChoiceT m) where
+    type StM (ChoiceT m) a = ComposeSt ChoiceT m a
+
+    liftBaseWith = defaultLiftBaseWith
+
+    restoreM = defaultRestoreM
+
+instance MonadTrans ChoiceT where
+    lift = ChoiceT . lift . lift
+
+instance MonadTransControl ChoiceT where
+    type StT ChoiceT a =
+      StT (ExceptT FlowError) (StT (ReaderT Store) a)
+
+    liftWith f = ChoiceT $
+      liftWith $ \g ->
+        liftWith $ \h ->
+          f (h . g . unChoiceT)
+
+    restoreT = ChoiceT . restoreT . restoreT
+
+instance Monad m => MonadReader Store (ChoiceT m) where
+  ask = ChoiceT ask
+  local f = ChoiceT . local f . unChoiceT
+
 -- Helpers
 
 runFlowT :: Context -> FlowT m a -> m (Either FlowError a)
 runFlowT c (FlowT k) = (runExceptT . runReaderT k) c
+
+runChoiceT :: Store -> ChoiceT m a -> m (Either FlowError a)
+runChoiceT c (ChoiceT k) = (runExceptT . runReaderT k) c
 
 hoistAWSEither :: MonadError FlowError m => Either Error a -> m a
 hoistAWSEither = either (throwError . AWSError) return
