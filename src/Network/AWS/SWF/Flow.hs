@@ -68,13 +68,13 @@ decide domain spec = do
   uid <- asks ctxUid
   (token', events) <- pollForDecisionTaskAction domain uid (tskQueue (strtTask spec))
   token <- maybeFlowError (FlowError "No Token") token'
-  decisions <- runChoose (store uid spec events) choose
+  decisions <- runChoose (store spec uid events) choose
   respondDecisionTaskCompletedAction token decisions
 
 ---------------------
 
-store :: Uid -> Spec -> [HistoryEvent] -> Store
-store uid spec events = Store uid spec events $
+store :: Spec -> Uid -> [HistoryEvent] -> Store
+store spec uid events = Store spec uid events $
   (flip lookup) $ fromList $ (flip map) events $ \e -> (e ^. heEventId, e)
 
 nextEvent :: MonadChoice m => [EventType] -> m HistoryEvent

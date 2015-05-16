@@ -83,8 +83,8 @@ data Spec
   } deriving ( Eq, Read, Show )
 
 data Store = Store
-  { strUid       :: Uid
-  , strSpec      :: Spec
+  { strSpec      :: Spec
+  , strUid       :: Uid
   , strEvents    :: [HistoryEvent]
   , strFindEvent :: (Integer -> Maybe HistoryEvent)
   }
