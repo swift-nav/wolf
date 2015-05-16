@@ -1,138 +1,179 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ConstraintKinds       #-}
 
-module Network.AWS.SWF.Flow.Internal where
+module Network.AWS.SWF.Flow.Internal
+  ( runFlowT
+  , registerDomainAction
+  , registerActivityTypeAction
+  , registerWorkflowTypeAction
+  , startWorkflowExecutionAction
+  , pollForActivityTaskAction
+  , respondActivityTaskCompletedAction
+  , pollForDecisionTaskAction
+  , respondDecisionTaskCompletedAction
+  , scheduleActivityTaskDecision
+  , completeWorkflowExecutionDecision
+  , startTimerDecision
+  , continueAsNewWorkflowExecutionDecision
+  ) where
 
-import Control.Lens               ( (^.), (.~), (&), (<&>) )
-import Control.Monad              ( liftM )
-import Control.Monad.Trans.AWS
-import Control.Monad.Trans.Except ( runExceptT )
-import Data.Conduit               ( ($$) )
-import Data.Conduit.List          ( consume )
-import Data.Maybe                 ( listToMaybe )
-import Data.Text                  ( Text, pack )
-import Data.UUID                  ( toString )
-import Data.UUID.V4               ( nextRandom )
+import Control.Lens                ( (^.), (.~), (&) )
+import Control.Monad.Base          ( MonadBase, liftBase, liftBaseDefault )
+import Control.Monad.Except        ( MonadError, ExceptT, runExceptT, throwError )
+import Control.Monad.Reader        ( MonadReader, ReaderT, ask, asks, local, runReaderT )
+import Control.Monad.Trans.AWS     ( AWST, Env, Error, paginate, send, send_, runAWST )
+import Control.Monad.Trans.Class   ( MonadTrans, lift )
+import Control.Monad.Trans.Control ( MonadBaseControl
+                                   , MonadTransControl
+                                   , StM
+                                   , StT
+                                   , ComposeSt
+                                   , liftBaseWith
+                                   , liftWith
+                                   , defaultLiftBaseWith
+                                   , defaultRestoreM
+                                   , restoreM
+                                   , restoreT )
+import Data.Conduit                ( ($$) )
+import Data.Conduit.List           ( consume )
+import Data.Maybe                  ( listToMaybe )
 import Network.AWS.SWF
 import Network.AWS.SWF.Flow.Types
-import Network.HTTP.Conduit       ( conduitManagerSettings )
-import Network.HTTP.Client        ( ManagerSettings(..), withManager )
-import System.IO                  ( stdout )
+import System.IO                   ( stdout )
+
+instance MonadBase b m => MonadBase b (FlowT m) where
+    liftBase = liftBaseDefault
+
+instance MonadBaseControl b m => MonadBaseControl b (FlowT m) where
+    type StM (FlowT m) a = ComposeSt FlowT m a
+
+    liftBaseWith = defaultLiftBaseWith
+
+    restoreM = defaultRestoreM
+
+instance MonadTrans FlowT where
+    lift = FlowT . lift . lift
+
+instance MonadTransControl FlowT where
+    type StT FlowT a =
+      StT (ExceptT FlowError) (StT (ReaderT Context) a)
+
+    liftWith f = FlowT $
+      liftWith $ \g ->
+        liftWith $ \h ->
+          f (h . g . unFlowT)
+
+    restoreT = FlowT . restoreT . restoreT
+
+instance Monad m => MonadReader Context (FlowT m) where
+  ask = FlowT ask
+  local f = FlowT . local f . unFlowT
 
 -- Helpers
 
-defaultConfig :: Config
-defaultConfig = Config
-  NorthVirginia
-  (FromEnv (pack "AWS_ACCESS_KEY_ID") (pack "AWS_SECRET_ACCESS_KEY"))
-  5000000
-  70000000
-  Info
-  stdout
+runFlowT :: Context -> FlowT m a -> m (Either FlowError a)
+runFlowT c (FlowT k) = (runExceptT . runReaderT k) c
 
-withContext :: Config -> (Context -> IO a) -> IO a
-withContext Config {..} action =
-  let
-    managerSettings timeout =
-      conduitManagerSettings { managerResponseTimeout = Just timeout }
+hoistAWSEither :: MonadError FlowError m => Either Error a -> m a
+hoistAWSEither = either (throwError . AWSError) return
 
-    newEnv' region credentials manager =
-      runExceptT (newEnv region credentials manager) >>= either error return
-  in
-    withManager (managerSettings cfgTimeout) $ \manager -> do
-      withManager (managerSettings cfgPollTimeout) $ \pollManager -> do
-        uid <- liftM (pack . toString) nextRandom
-        logger <- newLogger cfgLogLevel cfgLogHandle
-        env <- newEnv' cfgRegion cfgCredentials manager <&> envLogger .~ logger
-        pollEnv <- newEnv' cfgRegion cfgCredentials pollManager <&> envLogger .~ logger
-        action $ Context uid env pollEnv
+runAWST' :: MonadFlow m => (Context -> Env) -> AWST m a -> m a
+runAWST' env action = do
+  e <- asks env
+  r <- runAWST e $ action
+  hoistAWSEither r
 
--- Runners
+-- Actions
 
-runRegisterDomain :: Env -> Text -> IO (EitherE ())
-runRegisterDomain env domain =
-  runAWST env $
+registerDomainAction :: MonadFlow m => Domain -> m ()
+registerDomainAction domain =
+  runAWST' ctxEnv $
     send_ $ registerDomain domain "30"
 
-runRegisterActivityType :: Env -> Text -> Text -> Text -> IO (EitherE ())
-runRegisterActivityType env domain name version =
-  runAWST env $
+registerActivityTypeAction :: MonadFlow m => Domain -> Name -> Version -> m ()
+registerActivityTypeAction domain name version =
+  runAWST' ctxEnv $
     send_ $ registerActivityType domain name version
 
-runRegisterWorkflowType :: Env -> Text -> Text -> Text -> IO (EitherE ())
-runRegisterWorkflowType env domain name version =
-  runAWST env $
+registerWorkflowTypeAction :: MonadFlow m => Domain -> Name -> Version -> m ()
+registerWorkflowTypeAction domain name version =
+  runAWST' ctxEnv $
     send_ $ registerWorkflowType domain name version
 
-runStartWorkflowExecution :: Env -> Text -> Text -> Text -> Text -> Text -> Maybe Text -> IO (EitherE ())
-runStartWorkflowExecution env domain uid name version list input =
-  runAWST env $
+startWorkflowExecutionAction :: MonadFlow m => Domain -> Uid -> Name -> Version -> Queue -> Metadata -> m ()
+startWorkflowExecutionAction domain uid name version queue input =
+  runAWST' ctxEnv $
     send_ $ startWorkflowExecution domain uid (workflowType name version) &
-      swe1TaskList .~ Just (taskList list) &
+      swe1TaskList .~ Just (taskList queue) &
       swe1Input .~ input
 
-runPollForActivityTask :: Env -> Text -> Text -> Text -> IO (EitherE (Text, Maybe Text))
-runPollForActivityTask env domain uid list =
-  runAWST env $ do
-    r <- send $ pollForActivityTask domain (taskList list) &
+pollForActivityTaskAction :: MonadFlow m => Domain -> Uid -> Queue -> m (Token, Metadata)
+pollForActivityTaskAction domain uid queue =
+  runAWST' ctxPollEnv $ do
+    r <- send $ pollForActivityTask domain (taskList queue) &
       pfatIdentity .~ Just uid
     return $
       ( r ^. pfatrTaskToken
       , r ^. pfatrInput )
 
-runRespondActivityTaskCompleted :: Env -> Text -> Maybe Text -> IO (EitherE ())
-runRespondActivityTaskCompleted env taskToken result =
-  runAWST env $
-    send_ $ respondActivityTaskCompleted taskToken &
+respondActivityTaskCompletedAction :: MonadFlow m => Token -> Metadata -> m ()
+respondActivityTaskCompletedAction token result =
+  runAWST' ctxEnv $
+    send_ $ respondActivityTaskCompleted token &
       ratcResult .~ result
 
-runPollForDecisionTask :: Env -> Text -> Text -> Text -> IO (EitherE (Maybe Text, [HistoryEvent]))
-runPollForDecisionTask env domain uid list =
-  runAWST env $ do
-    rs <- paginate ( pollForDecisionTask domain (taskList list) &
+pollForDecisionTaskAction :: MonadFlow m => Domain -> Uid -> Queue -> m (Maybe Token, [HistoryEvent])
+pollForDecisionTaskAction domain uid queue =
+  runAWST' ctxPollEnv $ do
+    rs <- paginate (pollForDecisionTask domain (taskList queue) &
       pfdtIdentity .~ Just uid &
       pfdtReverseOrder .~ Just True &
-      pfdtMaximumPageSize .~ Just 100 )
+      pfdtMaximumPageSize .~ Just 100)
         $$ consume
     return $
       ( listToMaybe rs >>= return . (^. pfdtrTaskToken)
       , concatMap (^. pfdtrEvents) rs)
 
-runRespondDecisionTaskCompleted :: Env -> Text -> [Decision] -> IO (EitherE ())
-runRespondDecisionTaskCompleted env taskToken decisions =
-  runAWST env $
-    send_ $ respondDecisionTaskCompleted taskToken &
+respondDecisionTaskCompletedAction :: MonadFlow m => Token -> [Decision] -> m ()
+respondDecisionTaskCompletedAction token decisions =
+  runAWST' ctxEnv $
+    send_ $ respondDecisionTaskCompleted token &
       rdtcDecisions .~ decisions
 
 -- Decisions
 
-scheduleActivityTask :: Text -> Text -> Text -> Text -> Maybe Text -> Decision
-scheduleActivityTask uid name version list input =
+scheduleActivityTaskDecision :: Uid -> Name -> Version -> Queue -> Metadata -> Decision
+scheduleActivityTaskDecision uid name version list input = do
   decision ScheduleActivityTask &
     dScheduleActivityTaskDecisionAttributes .~ Just attrs where
       attrs = scheduleActivityTaskDecisionAttributes (activityType name version) uid &
         satdaTaskList .~ Just (taskList list) &
         satdaInput .~ input
 
-completeWorkflowExecution :: Maybe Text -> Decision
-completeWorkflowExecution result =
+completeWorkflowExecutionDecision :: Metadata -> Decision
+completeWorkflowExecutionDecision result =
   decision CompleteWorkflowExecution &
     dCompleteWorkflowExecutionDecisionAttributes .~ Just attrs where
       attrs = completeWorkflowExecutionDecisionAttributes &
         cwedaResult .~ result
 
-startTimer :: Text -> Text -> Text -> Decision
-startTimer uid timeout name =
+startTimerDecision :: Uid -> Name -> Timeout -> Decision
+startTimerDecision uid name timeout =
   decision StartTimer &
     dStartTimerDecisionAttributes .~ Just attrs where
       attrs = startTimerDecisionAttributes uid timeout &
         stdaControl .~ Just name
 
-continueAsNewWorkflowExecution :: Text -> Text -> Maybe Text -> Decision
-continueAsNewWorkflowExecution version list input =
+continueAsNewWorkflowExecutionDecision :: Version -> Queue -> Metadata -> Decision
+continueAsNewWorkflowExecutionDecision version queue input =
   decision ContinueAsNewWorkflowExecution &
     dContinueAsNewWorkflowExecutionDecisionAttributes .~ Just attrs where
       attrs = continueAsNewWorkflowExecutionDecisionAttributes &
         canwedaWorkflowTypeVersion .~ Just version &
-        canwedaTaskList .~ Just (taskList list) &
+        canwedaTaskList .~ Just (taskList queue) &
         canwedaInput .~ input
