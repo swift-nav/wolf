@@ -33,8 +33,7 @@ data FlowConfig = FlowConfig
   } deriving ( Eq )
 
 data FlowEnv = FlowEnv
-  { feUid     :: Uid
-  , feEnv     :: Env
+  { feEnv     :: Env
   , fePollEnv :: Env
   }
 
@@ -63,8 +62,8 @@ type MonadFlow m =
   )
 
 data DecideEnv = DecideEnv
-  { deSpec      :: Spec
-  , deUid       :: Uid
+  { deUid       :: Uid
+  , deSpec      :: Spec
   , deEvents    :: [HistoryEvent]
   , deFindEvent :: (Integer -> Maybe HistoryEvent)
   }

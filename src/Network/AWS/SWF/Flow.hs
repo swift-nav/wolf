@@ -17,9 +17,6 @@ import Control.Monad.Reader                 ( asks )
 import Control.Monad.Except                 ( throwError )
 import Data.List                            ( find )
 import Data.HashMap.Strict                  ( fromList, lookup )
-import Data.Text                            ( pack )
-import Data.UUID                            ( toString )
-import Data.UUID.V4                         ( nextRandom )
 import Control.Monad.Trans.AWS              ( Region(..)
                                             , Credentials(..)
                                             , LogLevel(..)
@@ -51,18 +48,14 @@ runFlow :: FlowConfig -> FlowT IO a -> IO (Either FlowError a)
 runFlow FlowConfig{..} action = do
   let managerSettings timeout =
         conduitManagerSettings { managerResponseTimeout = Just timeout }
-  let newUUID = do
-        r <- nextRandom
-        return $ pack $ toString r
   let newEnv' manager =
         runExceptT (newEnv fcRegion fcCredentials manager) >>= either error return
   withManager (managerSettings fcTimeout) $ \manager ->
     withManager (managerSettings fcPollTimeout) $ \pollManager -> do
-      uid <- newUUID
       logger <- newLogger fcLogLevel fcLogHandle
       env <- newEnv' manager <&> envLogger .~ logger
       pollEnv <- newEnv' pollManager <&> envLogger .~ logger
-      runFlowT (FlowEnv uid env pollEnv) action
+      runFlowT (FlowEnv env pollEnv) action
 
 register :: MonadFlow m => Domain -> Spec -> m [()]
 register domain spec = do
@@ -82,30 +75,27 @@ register domain spec = do
   rs <- registerAll
   return (r : rs)
 
-execute :: MonadFlow m => Domain -> Task -> Metadata -> m ()
-execute domain Task{..} input = do
-  uid <- asks feUid
+execute :: MonadFlow m => Domain -> Uid -> Task -> Metadata -> m ()
+execute domain uid Task{..} input =
   startWorkflowExecutionAction domain uid tskName tskVersion tskQueue input
 
-act :: MonadFlow m => Domain -> Task -> (Metadata -> m Metadata) -> m ()
-act domain Task{..} action = do
-  uid <- asks feUid
+act :: MonadFlow m => Domain -> Uid -> Task -> (Metadata -> m Metadata) -> m ()
+act domain uid Task{..} action = do
   (taskToken, input) <- pollForActivityTaskAction domain uid tskQueue
   output <- action input
   respondActivityTaskCompletedAction taskToken output
 
-decide :: MonadFlow m => Domain -> Spec -> m ()
-decide domain spec = do
-  uid <- asks feUid
+decide :: MonadFlow m => Domain -> Uid -> Spec -> m ()
+decide domain uid spec = do
   (token', events) <- pollForDecisionTaskAction domain uid (tskQueue (strtTask spec))
   token <- maybeFlowError (FlowError "No Token") token'
-  decisions <- runDecide (decideEnv spec uid events) select
+  decisions <- runDecide (decideEnv uid spec events) select
   respondDecisionTaskCompletedAction token decisions
 
 -- Helpers
 
-decideEnv :: Spec -> Uid -> [HistoryEvent] -> DecideEnv
-decideEnv spec uid events = DecideEnv spec uid events $
+decideEnv :: Uid -> Spec -> [HistoryEvent] -> DecideEnv
+decideEnv uid spec events = DecideEnv uid spec events $
   (flip lookup) $ fromList $ (flip map) events $ \e ->
     (e ^. heEventId, e)
 
