@@ -44,9 +44,9 @@ import Control.Monad.Trans.Control ( MonadBaseControl
                                    , restoreT )
 import Data.Conduit                ( ($$) )
 import Data.Conduit.List           ( consume )
-import Data.Maybe                  ( listToMaybe )
 import Network.AWS.SWF
 import Network.AWS.SWF.Flow.Types
+import Safe                        ( headMay )
 
 -- FlowT
 
@@ -189,7 +189,7 @@ pollForDecisionTaskAction domain uid queue =
       pfdtMaximumPageSize .~ Just 100)
         $$ consume
     return $
-      ( listToMaybe rs >>= return . (^. pfdtrTaskToken)
+      ( headMay rs >>= return . (^. pfdtrTaskToken)
       , concatMap (^. pfdtrEvents) rs)
 
 respondDecisionTaskCompletedAction :: MonadFlow m => Token -> [Decision] -> m ()

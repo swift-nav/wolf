@@ -63,7 +63,7 @@ type MonadFlow m =
 
 data DecideEnv = DecideEnv
   { deUid       :: Uid
-  , deSpec      :: Spec
+  , dePlan      :: Plan
   , deEvents    :: [HistoryEvent]
   , deFindEvent :: (Integer -> Maybe HistoryEvent)
   }
@@ -98,18 +98,24 @@ data Timer = Timer
   , tmrTimeout :: Text
   } deriving ( Eq, Read, Show )
 
-data Spec
-  = Start
+data Start = Start
   { strtTask :: Task
-  , strtNext :: Spec
-  }
-  | Done
-  | Continue
-  | Work
-  { wrkTask  :: Task
-  , wrkNext  :: Spec
+  } deriving ( Eq, Read, Show )
+
+data Spec
+  = Work
+  { wrkTask :: Task
   }
   | Sleep
   { slpTimer :: Timer
-  , slpNext  :: Spec
+  } deriving ( Eq, Read, Show )
+
+data End = Stop
+         | Continue
+         deriving ( Eq, Read, Show )
+
+data Plan = Plan
+  { plnStart :: Start
+  , plnSpecs :: [Spec]
+  , plnEnd   :: End
   } deriving ( Eq, Read, Show )
