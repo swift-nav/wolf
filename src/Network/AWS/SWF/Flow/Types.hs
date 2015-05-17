@@ -23,19 +23,19 @@ type Token    = Text
 type Timeout  = Text
 type Metadata = Maybe Text
 
-data Config = Config
-  { cfgRegion      :: Region
-  , cfgCredentials :: Credentials
-  , cfgTimeout     :: Int
-  , cfgPollTimeout :: Int
-  , cfgLogLevel    :: LogLevel
-  , cfgLogHandle   :: Handle
+data FlowConfig = FlowConfig
+  { fcRegion      :: Region
+  , fcCredentials :: Credentials
+  , fcTimeout     :: Int
+  , fcPollTimeout :: Int
+  , fcLogLevel    :: LogLevel
+  , fcLogHandle   :: Handle
   } deriving ( Eq )
 
-data Context = Context
-  { ctxUid     :: Uid
-  , ctxEnv     :: Env
-  , ctxPollEnv :: Env
+data FlowEnv = FlowEnv
+  { feUid     :: Uid
+  , feEnv     :: Env
+  , fePollEnv :: Env
   }
 
 data FlowError
@@ -44,14 +44,47 @@ data FlowError
   deriving ( Show )
 
 newtype FlowT m a = FlowT
-  { unFlowT :: ReaderT Context (ExceptT FlowError m) a
-  } deriving ( Functor, Applicative, Monad, MonadIO, MonadCatch, MonadThrow, MonadError FlowError )
+  { unFlowT :: ReaderT FlowEnv (ExceptT FlowError m) a
+  } deriving ( Functor
+             , Applicative
+             , Monad
+             , MonadIO
+             , MonadCatch
+             , MonadThrow
+             , MonadError FlowError
+             )
 
 type MonadFlow m =
   ( MonadBaseControl IO m
   , MonadCatch m
   , MonadIO m
-  , MonadReader Context m
+  , MonadReader FlowEnv m
+  , MonadError FlowError m
+  )
+
+data DecideEnv = DecideEnv
+  { deSpec      :: Spec
+  , deUid       :: Uid
+  , deEvents    :: [HistoryEvent]
+  , deFindEvent :: (Integer -> Maybe HistoryEvent)
+  }
+
+newtype DecideT m a = DecideT
+  { unDecideT :: ReaderT DecideEnv (ExceptT FlowError m) a
+  } deriving ( Functor
+             , Applicative
+             , Monad
+             , MonadIO
+             , MonadCatch
+             , MonadThrow
+             , MonadError FlowError
+             )
+
+type MonadDecide m =
+  ( MonadBaseControl IO m
+  , MonadCatch m
+  , MonadIO m
+  , MonadReader DecideEnv m
   , MonadError FlowError m
   )
 
@@ -81,23 +114,3 @@ data Spec
   { slpTimer :: Timer
   , slpNext  :: Spec
   } deriving ( Eq, Read, Show )
-
-data Store = Store
-  { strSpec      :: Spec
-  , strUid       :: Uid
-  , strEvents    :: [HistoryEvent]
-  , strFindEvent :: (Integer -> Maybe HistoryEvent)
-  }
-
-newtype ChoiceT m a = ChoiceT
-  { unChoiceT :: ReaderT Store (ExceptT FlowError m) a
-  } deriving ( Functor, Applicative, Monad, MonadIO, MonadCatch, MonadThrow, MonadError FlowError )
-
-type MonadChoice m =
-  ( MonadBaseControl IO m
-  , MonadCatch m
-  , MonadIO m
-  , MonadReader Store m
-  , MonadError FlowError m
-  )
-

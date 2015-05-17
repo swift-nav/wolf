@@ -4,34 +4,65 @@
 {-# LANGUAGE RecordWildCards   #-}
 
 module Network.AWS.SWF.Flow
-  ( register
+  ( defaultConfig
+  , runFlow
+  , register
   , execute
   , act
   , decide
   ) where
 
-import Control.Lens                         ( (^.) )
+import Control.Lens                         ( (^.), (.~), (<&>) )
 import Control.Monad.Reader                 ( asks )
-import Control.Monad.Except                 ( MonadError, throwError )
+import Control.Monad.Except                 ( throwError )
 import Data.List                            ( find )
 import Data.HashMap.Strict                  ( fromList, lookup )
+import Data.Text                            ( pack )
+import Data.UUID                            ( toString )
+import Data.UUID.V4                         ( nextRandom )
+import Control.Monad.Trans.AWS              ( Region(..)
+                                            , Credentials(..)
+                                            , LogLevel(..)
+                                            , envLogger
+                                            , newLogger
+                                            , newEnv )
+import Control.Monad.Trans.Except           ( runExceptT )
 import Network.AWS.SWF
 import Network.AWS.SWF.Flow.Internal
 import Network.AWS.SWF.Flow.Types
+import Network.HTTP.Conduit                 ( conduitManagerSettings )
+import Network.HTTP.Client                  ( ManagerSettings(..), withManager )
 import Prelude                       hiding ( lookup )
-
--- Helpers
-
-maybeToEither :: e -> Maybe a -> Either e a
-maybeToEither e a = maybe (Left e) Right a
-
-hoistFlowEither :: MonadError FlowError m => Either FlowError a -> m a
-hoistFlowEither = either throwError return
-
-maybeFlowError :: MonadError FlowError m => FlowError -> Maybe a -> m a
-maybeFlowError e = hoistFlowEither . maybeToEither e
+import System.IO                            ( stdout )
 
 -- Interface
+
+defaultConfig :: FlowConfig
+defaultConfig = FlowConfig
+  { fcRegion      = NorthVirginia
+  , fcCredentials = FromEnv "AWS_ACCESS_KEY_ID" "AWS_SECRET_ACCESS_KEY"
+  , fcTimeout     = 5000000
+  , fcPollTimeout = 70000000
+  , fcLogLevel    = Info
+  , fcLogHandle   = stdout
+  }
+
+runFlow :: FlowConfig -> FlowT IO a -> IO (Either FlowError a)
+runFlow FlowConfig{..} action = do
+  let managerSettings timeout =
+        conduitManagerSettings { managerResponseTimeout = Just timeout }
+  let newUUID = do
+        r <- nextRandom
+        return $ pack $ toString r
+  let newEnv' manager =
+        runExceptT (newEnv fcRegion fcCredentials manager) >>= either error return
+  withManager (managerSettings fcTimeout) $ \manager ->
+    withManager (managerSettings fcPollTimeout) $ \pollManager -> do
+      uid <- newUUID
+      logger <- newLogger fcLogLevel fcLogHandle
+      env <- newEnv' manager <&> envLogger .~ logger
+      pollEnv <- newEnv' pollManager <&> envLogger .~ logger
+      runFlowT (FlowEnv uid env pollEnv) action
 
 register :: MonadFlow m => Domain -> Spec -> m [()]
 register domain spec = do
@@ -53,38 +84,39 @@ register domain spec = do
 
 execute :: MonadFlow m => Domain -> Task -> Metadata -> m ()
 execute domain Task{..} input = do
-  uid <- asks ctxUid
+  uid <- asks feUid
   startWorkflowExecutionAction domain uid tskName tskVersion tskQueue input
 
 act :: MonadFlow m => Domain -> Task -> (Metadata -> m Metadata) -> m ()
 act domain Task{..} action = do
-  uid <- asks ctxUid
+  uid <- asks feUid
   (taskToken, input) <- pollForActivityTaskAction domain uid tskQueue
   output <- action input
   respondActivityTaskCompletedAction taskToken output
 
 decide :: MonadFlow m => Domain -> Spec -> m ()
 decide domain spec = do
-  uid <- asks ctxUid
+  uid <- asks feUid
   (token', events) <- pollForDecisionTaskAction domain uid (tskQueue (strtTask spec))
   token <- maybeFlowError (FlowError "No Token") token'
-  decisions <- runChoose (store spec uid events) choose
+  decisions <- runDecide (decideEnv spec uid events) select
   respondDecisionTaskCompletedAction token decisions
 
----------------------
+-- Helpers
 
-store :: Spec -> Uid -> [HistoryEvent] -> Store
-store spec uid events = Store spec uid events $
-  (flip lookup) $ fromList $ (flip map) events $ \e -> (e ^. heEventId, e)
+decideEnv :: Spec -> Uid -> [HistoryEvent] -> DecideEnv
+decideEnv spec uid events = DecideEnv spec uid events $
+  (flip lookup) $ fromList $ (flip map) events $ \e ->
+    (e ^. heEventId, e)
 
-nextEvent :: MonadChoice m => [EventType] -> m HistoryEvent
+nextEvent :: MonadDecide m => [EventType] -> m HistoryEvent
 nextEvent ets = do
-  events <- asks strEvents
+  events <- asks deEvents
   maybeFlowError (FlowError "No Next Event") $
     (flip find) events $ \e ->
       elem (e ^. heEventType) ets
 
-workNext :: MonadChoice m => Name -> m Spec
+workNext :: MonadDecide m => Name -> m Spec
 workNext name = do
   let go Work{..}
         | tskName wrkTask == name = return wrkNext
@@ -92,10 +124,10 @@ workNext name = do
       go Start{..} = go strtNext
       go Sleep{..} = go slpNext
       go _ = throwError (FlowError "No Work Next Spec")
-  spec <- asks strSpec
+  spec <- asks deSpec
   go spec
 
-sleepNext :: MonadChoice m => Name -> m Spec
+sleepNext :: MonadDecide m => Name -> m Spec
 sleepNext name = do
   let go Sleep {..}
         | tmrName slpTimer == name = return slpNext
@@ -103,24 +135,69 @@ sleepNext name = do
       go Start {..} = go strtNext
       go Work {..} = go wrkNext
       go _ = throwError (FlowError "No Sleep Next Spec")
-  spec <- asks strSpec
+  spec <- asks deSpec
   go spec
 
-scheduleContinue :: MonadChoice m => m [Decision]
-scheduleContinue = do
-  task <- asks (strtTask . strSpec)
-  event <- nextEvent [WorkflowExecutionStarted]
-  input <- maybeFlowError (FlowError "No Continue Start Information") $ do
+select :: MonadDecide m => m [Decision]
+select = do
+  event <- nextEvent [WorkflowExecutionStarted, ActivityTaskCompleted, TimerFired]
+  case event ^. heEventType of
+    WorkflowExecutionStarted -> start event
+    ActivityTaskCompleted    -> completed event
+    TimerFired               -> timer event
+    _                        -> throwError (FlowError "Unknown Event")
+
+start :: MonadDecide m => HistoryEvent -> m [Decision]
+start event = do
+  input <- maybeFlowError (FlowError "No Start Information") $ do
     attrs <- event ^. heWorkflowExecutionStartedEventAttributes
     return $ attrs ^. weseaInput
-  return [continueAsNewWorkflowExecutionDecision
-           (tskVersion task)
-           (tskQueue task)
-           input]
+  next <- asks (strtNext . deSpec)
+  schedule next input
 
-schedule :: MonadChoice m => Spec -> Metadata -> m [Decision]
+completed :: MonadDecide m => HistoryEvent -> m [Decision]
+completed event = do
+  findEvent <- asks deFindEvent
+  (input, name) <- maybeFlowError (FlowError "No Completed Information") $ do
+    attrs <- event ^. heActivityTaskCompletedEventAttributes
+    event' <- findEvent $ attrs ^. atceaScheduledEventId
+    attrs' <- event' ^. heActivityTaskScheduledEventAttributes
+    return (attrs ^. atceaResult, attrs' ^. atseaActivityType ^. atName)
+  next <- workNext name
+  schedule next input
+
+timer :: MonadDecide m => HistoryEvent -> m [Decision]
+timer event = do
+  findEvent <- asks deFindEvent
+  name <- maybeFlowError (FlowError "No Timer Information") $ do
+    attrs <- event ^. heTimerFiredEventAttributes
+    event' <- findEvent $ attrs ^. tfeaStartedEventId
+    attrs' <- event' ^. heTimerStartedEventAttributes
+    attrs' ^. tseaControl
+  next <- sleepNext name
+  event' <- nextEvent [WorkflowExecutionStarted, ActivityTaskCompleted]
+  case event' ^. heEventType of
+    WorkflowExecutionStarted -> timerStart event' next
+    ActivityTaskCompleted    -> timerCompleted event' next
+    _                        -> throwError (FlowError "Unknown Timer Event")
+
+timerStart :: MonadDecide m => HistoryEvent -> Spec -> m [Decision]
+timerStart event next = do
+  input <- maybeFlowError (FlowError "No Timer Start Information") $ do
+    attrs <- event ^. heWorkflowExecutionStartedEventAttributes
+    return $ attrs ^. weseaInput
+  schedule next input
+
+timerCompleted :: MonadDecide m => HistoryEvent -> Spec -> m [Decision]
+timerCompleted event next = do
+  input <- maybeFlowError (FlowError "No Timer Completed Information") $ do
+    attrs <- event ^. heActivityTaskCompletedEventAttributes
+    return $ attrs ^. atceaResult
+  schedule next input
+
+schedule :: MonadDecide m => Spec -> Metadata -> m [Decision]
 schedule spec input = do
-  uid <- asks strUid
+  uid <- asks deUid
   let go Work{..} =
         return [scheduleActivityTaskDecision uid
                  (tskName wrkTask)
@@ -137,65 +214,14 @@ schedule spec input = do
       go _ = throwError (FlowError "Bad Schedule Spec")
   go spec
 
-start :: MonadChoice m => HistoryEvent -> m [Decision]
-start event = do
-  input <- maybeFlowError (FlowError "No Start Information") $ do
+scheduleContinue :: MonadDecide m => m [Decision]
+scheduleContinue = do
+  task <- asks (strtTask . deSpec)
+  event <- nextEvent [WorkflowExecutionStarted]
+  input <- maybeFlowError (FlowError "No Continue Start Information") $ do
     attrs <- event ^. heWorkflowExecutionStartedEventAttributes
     return $ attrs ^. weseaInput
-  next <- asks (strtNext . strSpec)
-  schedule next input
-
-completed :: MonadChoice m => HistoryEvent -> m [Decision]
-completed event = do
-  findEvent <- asks strFindEvent
-  (input, name) <- maybeFlowError (FlowError "No Completed Information") $ do
-    attrs <- event ^. heActivityTaskCompletedEventAttributes
-    event' <- findEvent $ attrs ^. atceaScheduledEventId
-    attrs' <- event' ^. heActivityTaskScheduledEventAttributes
-    return (attrs ^. atceaResult, attrs' ^. atseaActivityType ^. atName)
-  next <- workNext name
-  schedule next input
-
-timer :: MonadChoice m => HistoryEvent -> m [Decision]
-timer event = do
-  findEvent <- asks strFindEvent
-  name <- maybeFlowError (FlowError "No Timer Information") $ do
-    attrs <- event ^. heTimerFiredEventAttributes
-    event' <- findEvent $ attrs ^. tfeaStartedEventId
-    attrs' <- event' ^. heTimerStartedEventAttributes
-    attrs' ^. tseaControl
-  next <- sleepNext name
-  event' <- nextEvent [WorkflowExecutionStarted, ActivityTaskCompleted]
-  case event' ^. heEventType of
-    WorkflowExecutionStarted -> timerStart event' next
-    ActivityTaskCompleted    -> timerCompleted event' next
-    _                        -> throwError (FlowError "Unknown Timer Event")
-
-timerStart :: MonadChoice m => HistoryEvent -> Spec -> m [Decision]
-timerStart event next = do
-  input <- maybeFlowError (FlowError "No Timer Start Information") $ do
-    attrs <- event ^. heWorkflowExecutionStartedEventAttributes
-    return $ attrs ^. weseaInput
-  schedule next input
-
-timerCompleted :: MonadChoice m => HistoryEvent -> Spec -> m [Decision]
-timerCompleted event next = do
-  input <- maybeFlowError (FlowError "No Timer Completed Information") $ do
-    attrs <- event ^. heActivityTaskCompletedEventAttributes
-    return $ attrs ^. atceaResult
-  schedule next input
-
-choose :: MonadChoice m => m [Decision]
-choose = do
-  event <- nextEvent [WorkflowExecutionStarted, ActivityTaskCompleted, TimerFired]
-  case event ^. heEventType of
-    WorkflowExecutionStarted -> start event
-    ActivityTaskCompleted    -> completed event
-    TimerFired               -> timer event
-    _                        -> throwError (FlowError "Unknown Event")
-
-runChoose :: MonadError FlowError m => Store -> ChoiceT m b -> m b
-runChoose s action = do
-  r <- runChoiceT s action
-  hoistFlowEither r
-
+  return [continueAsNewWorkflowExecutionDecision
+           (tskVersion task)
+           (tskQueue task)
+           input]

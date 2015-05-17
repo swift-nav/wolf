@@ -8,7 +8,9 @@
 
 module Network.AWS.SWF.Flow.Internal
   ( runFlowT
-  , runChoiceT
+  , runDecideT
+  , runDecide
+  , maybeFlowError
   , registerDomainAction
   , registerActivityTypeAction
   , registerWorkflowTypeAction
@@ -48,6 +50,9 @@ import Network.AWS.SWF.Flow.Types
 
 -- FlowT
 
+runFlowT :: FlowEnv -> FlowT m a -> m (Either FlowError a)
+runFlowT e (FlowT k) = (runExceptT . runReaderT k) e
+
 instance MonadBase b m => MonadBase b (FlowT m) where
     liftBase = liftBaseDefault
 
@@ -63,7 +68,7 @@ instance MonadTrans FlowT where
 
 instance MonadTransControl FlowT where
     type StT FlowT a =
-      StT (ExceptT FlowError) (StT (ReaderT Context) a)
+      StT (ExceptT FlowError) (StT (ReaderT FlowEnv) a)
 
     liftWith f = FlowT $
       liftWith $ \g ->
@@ -72,84 +77,96 @@ instance MonadTransControl FlowT where
 
     restoreT = FlowT . restoreT . restoreT
 
-instance Monad m => MonadReader Context (FlowT m) where
+instance Monad m => MonadReader FlowEnv (FlowT m) where
   ask = FlowT ask
   local f = FlowT . local f . unFlowT
 
--- ChoiceT
+-- DecideT
 
-instance MonadBase b m => MonadBase b (ChoiceT m) where
+runDecideT :: DecideEnv -> DecideT m a -> m (Either FlowError a)
+runDecideT e (DecideT k) = (runExceptT . runReaderT k) e
+
+instance MonadBase b m => MonadBase b (DecideT m) where
     liftBase = liftBaseDefault
 
-instance MonadBaseControl b m => MonadBaseControl b (ChoiceT m) where
-    type StM (ChoiceT m) a = ComposeSt ChoiceT m a
+instance MonadBaseControl b m => MonadBaseControl b (DecideT m) where
+    type StM (DecideT m) a = ComposeSt DecideT m a
 
     liftBaseWith = defaultLiftBaseWith
 
     restoreM = defaultRestoreM
 
-instance MonadTrans ChoiceT where
-    lift = ChoiceT . lift . lift
+instance MonadTrans DecideT where
+    lift = DecideT . lift . lift
 
-instance MonadTransControl ChoiceT where
-    type StT ChoiceT a =
-      StT (ExceptT FlowError) (StT (ReaderT Store) a)
+instance MonadTransControl DecideT where
+    type StT DecideT a =
+      StT (ExceptT FlowError) (StT (ReaderT DecideEnv) a)
 
-    liftWith f = ChoiceT $
+    liftWith f = DecideT $
       liftWith $ \g ->
         liftWith $ \h ->
-          f (h . g . unChoiceT)
+          f (h . g . unDecideT)
 
-    restoreT = ChoiceT . restoreT . restoreT
+    restoreT = DecideT . restoreT . restoreT
 
-instance Monad m => MonadReader Store (ChoiceT m) where
-  ask = ChoiceT ask
-  local f = ChoiceT . local f . unChoiceT
+instance Monad m => MonadReader DecideEnv (DecideT m) where
+  ask = DecideT ask
+  local f = DecideT . local f . unDecideT
 
 -- Helpers
-
-runFlowT :: Context -> FlowT m a -> m (Either FlowError a)
-runFlowT c (FlowT k) = (runExceptT . runReaderT k) c
-
-runChoiceT :: Store -> ChoiceT m a -> m (Either FlowError a)
-runChoiceT c (ChoiceT k) = (runExceptT . runReaderT k) c
 
 hoistAWSEither :: MonadError FlowError m => Either Error a -> m a
 hoistAWSEither = either (throwError . AWSError) return
 
-runAWST' :: MonadFlow m => (Context -> Env) -> AWST m a -> m a
-runAWST' env action = do
+runAWS :: MonadFlow m => (FlowEnv -> Env) -> AWST m a -> m a
+runAWS env action = do
   e <- asks env
   r <- runAWST e $ action
   hoistAWSEither r
+
+hoistFlowEither :: MonadError FlowError m => Either FlowError a -> m a
+hoistFlowEither = either throwError return
+
+runDecide :: MonadError FlowError m => DecideEnv -> DecideT m a -> m a
+runDecide env action = do
+  r <- runDecideT env action
+  hoistFlowEither r
+
+maybeToEither :: e -> Maybe a -> Either e a
+maybeToEither e a = maybe (Left e) Right a
+
+maybeFlowError :: MonadError FlowError m => FlowError -> Maybe a -> m a
+maybeFlowError e = hoistFlowEither . maybeToEither e
 
 -- Actions
 
 registerDomainAction :: MonadFlow m => Domain -> m ()
 registerDomainAction domain =
-  runAWST' ctxEnv $
+  runAWS feEnv $
     send_ $ registerDomain domain "30"
 
 registerActivityTypeAction :: MonadFlow m => Domain -> Name -> Version -> m ()
 registerActivityTypeAction domain name version =
-  runAWST' ctxEnv $
+  runAWS feEnv $
     send_ $ registerActivityType domain name version
 
 registerWorkflowTypeAction :: MonadFlow m => Domain -> Name -> Version -> m ()
 registerWorkflowTypeAction domain name version =
-  runAWST' ctxEnv $
+  runAWS feEnv $
     send_ $ registerWorkflowType domain name version
 
-startWorkflowExecutionAction :: MonadFlow m => Domain -> Uid -> Name -> Version -> Queue -> Metadata -> m ()
+startWorkflowExecutionAction :: MonadFlow m
+                             => Domain -> Uid -> Name -> Version -> Queue -> Metadata -> m ()
 startWorkflowExecutionAction domain uid name version queue input =
-  runAWST' ctxEnv $
+  runAWS feEnv $
     send_ $ startWorkflowExecution domain uid (workflowType name version) &
       swe1TaskList .~ Just (taskList queue) &
       swe1Input .~ input
 
 pollForActivityTaskAction :: MonadFlow m => Domain -> Uid -> Queue -> m (Token, Metadata)
 pollForActivityTaskAction domain uid queue =
-  runAWST' ctxPollEnv $ do
+  runAWS fePollEnv $ do
     r <- send $ pollForActivityTask domain (taskList queue) &
       pfatIdentity .~ Just uid
     return $
@@ -158,13 +175,14 @@ pollForActivityTaskAction domain uid queue =
 
 respondActivityTaskCompletedAction :: MonadFlow m => Token -> Metadata -> m ()
 respondActivityTaskCompletedAction token result =
-  runAWST' ctxEnv $
+  runAWS feEnv $
     send_ $ respondActivityTaskCompleted token &
       ratcResult .~ result
 
-pollForDecisionTaskAction :: MonadFlow m => Domain -> Uid -> Queue -> m (Maybe Token, [HistoryEvent])
+pollForDecisionTaskAction :: MonadFlow m
+                          => Domain -> Uid -> Queue -> m (Maybe Token, [HistoryEvent])
 pollForDecisionTaskAction domain uid queue =
-  runAWST' ctxPollEnv $ do
+  runAWS fePollEnv $ do
     rs <- paginate (pollForDecisionTask domain (taskList queue) &
       pfdtIdentity .~ Just uid &
       pfdtReverseOrder .~ Just True &
@@ -176,7 +194,7 @@ pollForDecisionTaskAction domain uid queue =
 
 respondDecisionTaskCompletedAction :: MonadFlow m => Token -> [Decision] -> m ()
 respondDecisionTaskCompletedAction token decisions =
-  runAWST' ctxEnv $
+  runAWS feEnv $
     send_ $ respondDecisionTaskCompleted token &
       rdtcDecisions .~ decisions
 

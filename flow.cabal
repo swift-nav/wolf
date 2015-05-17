@@ -30,11 +30,9 @@ library
                      , amazonka-swf >= 0.3.4
                      , base >=4.7 && <4.8
                      , conduit >= 1.2.0
-                     , either >= 3.4.0
                      , exceptions >= 0.8.0
                      , http-client >= 0.4.0
                      , http-conduit >= 2.1.0
-                     , http-types >= 0.8.0
                      , lens >= 4.7.0
                      , monad-control >= 1.0.0
                      , mtl >= 2.2.0
