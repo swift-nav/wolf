@@ -7,6 +7,7 @@ import Control.Applicative         ( Applicative )
 import Control.Monad.Catch         ( MonadCatch, MonadThrow )
 import Control.Monad.IO.Class      ( MonadIO )
 import Control.Monad.Except        ( ExceptT, MonadError )
+import Control.Monad.Logger        ( LoggingT, MonadLogger )
 import Control.Monad.Reader        ( ReaderT, MonadReader )
 import Control.Monad.Trans.AWS     ( Credentials, Env, Error, LogLevel, Region )
 import Control.Monad.Trans.Control ( MonadBaseControl )
@@ -43,11 +44,12 @@ data FlowError
   deriving ( Show )
 
 newtype FlowT m a = FlowT
-  { unFlowT :: ReaderT FlowEnv (ExceptT FlowError m) a
+  { unFlowT :: LoggingT (ReaderT FlowEnv (ExceptT FlowError m)) a
   } deriving ( Functor
              , Applicative
              , Monad
              , MonadIO
+             , MonadLogger
              , MonadCatch
              , MonadThrow
              , MonadError FlowError
@@ -57,6 +59,7 @@ type MonadFlow m =
   ( MonadBaseControl IO m
   , MonadCatch m
   , MonadIO m
+  , MonadLogger m
   , MonadReader FlowEnv m
   , MonadError FlowError m
   )
@@ -65,15 +68,16 @@ data DecideEnv = DecideEnv
   { deUid       :: Uid
   , dePlan      :: Plan
   , deEvents    :: [HistoryEvent]
-  , deFindEvent :: (Integer -> Maybe HistoryEvent)
+  , deFindEvent :: Integer -> Maybe HistoryEvent
   }
 
 newtype DecideT m a = DecideT
-  { unDecideT :: ReaderT DecideEnv (ExceptT FlowError m) a
+  { unDecideT :: LoggingT (ReaderT DecideEnv (ExceptT FlowError m)) a
   } deriving ( Functor
              , Applicative
              , Monad
              , MonadIO
+             , MonadLogger
              , MonadCatch
              , MonadThrow
              , MonadError FlowError
@@ -83,6 +87,7 @@ type MonadDecide m =
   ( MonadBaseControl IO m
   , MonadCatch m
   , MonadIO m
+  , MonadLogger m
   , MonadReader DecideEnv m
   , MonadError FlowError m
   )

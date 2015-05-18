@@ -28,6 +28,8 @@ module Network.AWS.SWF.Flow.Internal
 import Control.Lens                ( (^.), (.~), (&) )
 import Control.Monad.Base          ( MonadBase, liftBase, liftBaseDefault )
 import Control.Monad.Except        ( MonadError, ExceptT, runExceptT, throwError )
+import Control.Monad.IO.Class      ( MonadIO )
+import Control.Monad.Logger        ( runStdoutLoggingT )
 import Control.Monad.Reader        ( MonadReader, ReaderT, ask, asks, local, runReaderT )
 import Control.Monad.Trans.AWS     ( AWST, Env, Error, paginate, send, send_, runAWST )
 import Control.Monad.Trans.Class   ( MonadTrans, lift )
@@ -50,8 +52,8 @@ import Safe                        ( headMay )
 
 -- FlowT
 
-runFlowT :: FlowEnv -> FlowT m a -> m (Either FlowError a)
-runFlowT e (FlowT k) = (runExceptT . runReaderT k) e
+runFlowT :: MonadIO m => FlowEnv -> FlowT m a -> m (Either FlowError a)
+runFlowT e (FlowT k) = runExceptT (runReaderT (runStdoutLoggingT k) e)
 
 instance MonadBase b m => MonadBase b (FlowT m) where
     liftBase = liftBaseDefault
@@ -64,7 +66,7 @@ instance MonadBaseControl b m => MonadBaseControl b (FlowT m) where
     restoreM = defaultRestoreM
 
 instance MonadTrans FlowT where
-    lift = FlowT . lift . lift
+    lift = FlowT . lift . lift . lift
 
 instance MonadTransControl FlowT where
     type StT FlowT a =
@@ -73,9 +75,10 @@ instance MonadTransControl FlowT where
     liftWith f = FlowT $
       liftWith $ \g ->
         liftWith $ \h ->
-          f (h . g . unFlowT)
+          liftWith $ \i ->
+            f (i . h . g . unFlowT)
 
-    restoreT = FlowT . restoreT . restoreT
+    restoreT = FlowT . restoreT . restoreT . restoreT
 
 instance Monad m => MonadReader FlowEnv (FlowT m) where
   ask = FlowT ask
@@ -83,8 +86,8 @@ instance Monad m => MonadReader FlowEnv (FlowT m) where
 
 -- DecideT
 
-runDecideT :: DecideEnv -> DecideT m a -> m (Either FlowError a)
-runDecideT e (DecideT k) = (runExceptT . runReaderT k) e
+runDecideT :: MonadIO m => DecideEnv -> DecideT m a -> m (Either FlowError a)
+runDecideT e (DecideT k) = runExceptT (runReaderT (runStdoutLoggingT k) e)
 
 instance MonadBase b m => MonadBase b (DecideT m) where
     liftBase = liftBaseDefault
@@ -97,7 +100,7 @@ instance MonadBaseControl b m => MonadBaseControl b (DecideT m) where
     restoreM = defaultRestoreM
 
 instance MonadTrans DecideT where
-    lift = DecideT . lift . lift
+    lift = DecideT . lift . lift . lift
 
 instance MonadTransControl DecideT where
     type StT DecideT a =
@@ -106,9 +109,10 @@ instance MonadTransControl DecideT where
     liftWith f = DecideT $
       liftWith $ \g ->
         liftWith $ \h ->
-          f (h . g . unDecideT)
+          liftWith $ \i ->
+            f (i . h . g . unDecideT)
 
-    restoreT = DecideT . restoreT . restoreT
+    restoreT = DecideT . restoreT . restoreT . restoreT
 
 instance Monad m => MonadReader DecideEnv (DecideT m) where
   ask = DecideT ask
@@ -128,7 +132,7 @@ runAWS env action = do
 hoistFlowEither :: MonadError FlowError m => Either FlowError a -> m a
 hoistFlowEither = either throwError return
 
-runDecide :: MonadError FlowError m => DecideEnv -> DecideT m a -> m a
+runDecide :: (MonadError FlowError m, MonadIO m) => DecideEnv -> DecideT m a -> m a
 runDecide env action = do
   r <- runDecideT env action
   hoistFlowEither r
@@ -158,7 +162,7 @@ registerWorkflowTypeAction domain name version =
 
 startWorkflowExecutionAction :: MonadFlow m
                              => Domain -> Uid -> Name -> Version -> Queue -> Metadata -> m ()
-startWorkflowExecutionAction domain uid name version queue input =
+startWorkflowExecutionAction domain uid name version queue input = do
   runAWS feEnv $
     send_ $ startWorkflowExecution domain uid (workflowType name version) &
       swe1TaskList .~ Just (taskList queue) &
