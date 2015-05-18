@@ -31,6 +31,7 @@ library
                      , base >=4.7 && <4.8
                      , conduit >= 1.2.0
                      , exceptions >= 0.8.0
+                     , fast-logger >= 2.3.0
                      , http-client >= 0.4.0
                      , http-conduit >= 2.1.0
                      , lens >= 4.7.0

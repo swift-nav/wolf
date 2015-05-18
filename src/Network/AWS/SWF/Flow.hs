@@ -12,27 +12,28 @@ module Network.AWS.SWF.Flow
   , decide
   ) where
 
-import Control.Lens                         ( (^.), (.~), (<&>) )
-import Control.Monad                        ( foldM )
-import Control.Monad.Reader                 ( asks )
-import Control.Monad.Except                 ( throwError )
-import Data.List                            ( find )
-import Data.HashMap.Strict                  ( fromList, lookup )
-import Control.Monad.Trans.AWS              ( Region(..)
-                                            , Credentials(..)
-                                            , LogLevel(..)
-                                            , envLogger
-                                            , newLogger
-                                            , newEnv )
-import Control.Monad.Trans.Except           ( runExceptT )
+import Control.Lens                  ( (^.), (.~), (<&>) )
+import Control.Monad                 ( foldM )
+import Control.Monad.Except          ( throwError )
+import Control.Monad.Reader          ( asks )
+import Data.List                     ( find )
+import Data.HashMap.Strict           ( fromList, lookup )
+import Control.Monad.Trans.AWS       ( Region(..)
+                                     , Credentials(..)
+                                     , LogLevel(..)
+                                     , envLogger
+                                     , newLogger
+                                     , newEnv )
+import Control.Monad.Trans.Except    ( runExceptT )
 import Network.AWS.SWF
 import Network.AWS.SWF.Flow.Internal
 import Network.AWS.SWF.Flow.Types
-import Network.HTTP.Conduit                 ( conduitManagerSettings )
-import Network.HTTP.Client                  ( ManagerSettings(..), withManager )
-import Prelude                       hiding ( lookup )
-import Safe                                 ( headMay, tailMay )
-import System.IO                            ( stdout )
+import Network.HTTP.Conduit          ( conduitManagerSettings )
+import Network.HTTP.Client           ( ManagerSettings(..), withManager )
+import Prelude                hiding ( lookup )
+import Safe                          ( headMay, tailMay )
+import System.Log.FastLogger         ( newStderrLoggerSet, defaultBufSize, pushLogStr )
+import System.IO                     ( stderr )
 
 -- Interface
 
@@ -43,7 +44,6 @@ defaultConfig = FlowConfig
   , fcTimeout     = 5000000
   , fcPollTimeout = 70000000
   , fcLogLevel    = Info
-  , fcLogHandle   = stdout
   }
 
 runFlow :: FlowConfig -> FlowT IO a -> IO (Either FlowError a)
@@ -54,10 +54,11 @@ runFlow FlowConfig{..} action = do
         runExceptT (newEnv fcRegion fcCredentials manager) >>= either error return
   withManager (managerSettings fcTimeout) $ \manager ->
     withManager (managerSettings fcPollTimeout) $ \pollManager -> do
-      logger <- newLogger fcLogLevel fcLogHandle
+      loggerSet <- newStderrLoggerSet defaultBufSize
+      logger <- newLogger fcLogLevel stderr
       env <- newEnv' manager <&> envLogger .~ logger
       pollEnv <- newEnv' pollManager <&> envLogger .~ logger
-      runFlowT (FlowEnv env pollEnv) action
+      runFlowT (FlowEnv (pushLogStr loggerSet) env pollEnv) action
 
 register :: MonadFlow m => Domain -> Plan -> m [()]
 register domain Plan{..} = do
@@ -84,14 +85,15 @@ decide :: MonadFlow m => Domain -> Uid -> Plan -> m ()
 decide domain uid plan@Plan{..} = do
    (token', events) <- pollForDecisionTaskAction domain uid (tskQueue $ strtTask plnStart)
    token <- maybeFlowError (FlowError "No Token") token'
-   decisions <- runDecide (decideEnv uid plan events) select
+   logger <- asks feLogger
+   decisions <- runDecide (decideEnv logger uid plan events) select
    respondDecisionTaskCompletedAction token decisions
 
 -- Helpers
 
-decideEnv :: Uid -> Plan -> [HistoryEvent] -> DecideEnv
-decideEnv uid plan events =
-  DecideEnv uid plan events findEvent where
+decideEnv :: Logger -> Uid -> Plan -> [HistoryEvent] -> DecideEnv
+decideEnv logger uid plan events =
+  DecideEnv logger uid plan events findEvent where
     findEvent =
       (flip lookup) $ fromList $ (flip map) events $ \e ->
         (e ^. heEventId, e)

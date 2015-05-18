@@ -29,7 +29,7 @@ import Control.Lens                ( (^.), (.~), (&) )
 import Control.Monad.Base          ( MonadBase, liftBase, liftBaseDefault )
 import Control.Monad.Except        ( MonadError, ExceptT, runExceptT, throwError )
 import Control.Monad.IO.Class      ( MonadIO )
-import Control.Monad.Logger        ( runStdoutLoggingT )
+import Control.Monad.Logger        ( runLoggingT )
 import Control.Monad.Reader        ( MonadReader, ReaderT, ask, asks, local, runReaderT )
 import Control.Monad.Trans.AWS     ( AWST, Env, Error, paginate, send, send_, runAWST )
 import Control.Monad.Trans.Class   ( MonadTrans, lift )
@@ -53,7 +53,8 @@ import Safe                        ( headMay )
 -- FlowT
 
 runFlowT :: MonadIO m => FlowEnv -> FlowT m a -> m (Either FlowError a)
-runFlowT e (FlowT k) = runExceptT (runReaderT (runStdoutLoggingT k) e)
+runFlowT e (FlowT k) = runExceptT (runReaderT (runLoggingT k l) e) where
+  l = const . const . const $ feLogger e
 
 instance MonadBase b m => MonadBase b (FlowT m) where
     liftBase = liftBaseDefault
@@ -87,7 +88,8 @@ instance Monad m => MonadReader FlowEnv (FlowT m) where
 -- DecideT
 
 runDecideT :: MonadIO m => DecideEnv -> DecideT m a -> m (Either FlowError a)
-runDecideT e (DecideT k) = runExceptT (runReaderT (runStdoutLoggingT k) e)
+runDecideT e (DecideT k) = runExceptT (runReaderT (runLoggingT k l) e) where
+  l = const . const . const $ deLogger e
 
 instance MonadBase b m => MonadBase b (DecideT m) where
     liftBase = liftBaseDefault
