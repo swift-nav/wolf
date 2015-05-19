@@ -18,7 +18,7 @@ module Network.AWS.SWF.Flow
   , Timeout
   , Metadata
   , FlowEnv (..)
-  , FlowError
+  , FlowError (..)
   , FlowT
   , MonadFlow
   , Task
