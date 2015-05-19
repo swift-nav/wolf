@@ -44,11 +44,14 @@ import Safe                          ( headMay, tailMay )
 register :: MonadFlow m => Domain -> Plan -> m [()]
 register domain Plan{..} = do
   r <- registerDomainAction domain
-  s <- registerWorkflowTypeAction domain (tskName $ strtTask plnStart)
+  s <- registerWorkflowTypeAction domain
+         (tskName $ strtTask plnStart)
          (tskVersion $ strtTask plnStart)
   foldM go [s, r] plnSpecs where
     go rs Work{..} = do
-      r <- registerActivityTypeAction domain (tskName wrkTask) (tskVersion wrkTask)
+      r <- registerActivityTypeAction domain
+             (tskName wrkTask)
+             (tskVersion wrkTask)
       return (r : rs)
     go rs Sleep{..} = return rs
 
