@@ -8,7 +8,6 @@
 
 module Network.AWS.SWF.Flow.Internal
   ( runFlowT
-  , runDecideT
   , runDecide
   , maybeFlowError
   , registerDomainAction
@@ -17,6 +16,7 @@ module Network.AWS.SWF.Flow.Internal
   , startWorkflowExecutionAction
   , pollForActivityTaskAction
   , respondActivityTaskCompletedAction
+  , respondActivityTaskFailedAction
   , pollForDecisionTaskAction
   , respondDecisionTaskCompletedAction
   , scheduleActivityTaskDecision
@@ -29,7 +29,7 @@ import Control.Lens                ( (^.), (.~), (&) )
 import Control.Monad.Base          ( MonadBase, liftBase, liftBaseDefault )
 import Control.Monad.Except        ( MonadError, ExceptT, runExceptT, throwError )
 import Control.Monad.IO.Class      ( MonadIO )
-import Control.Monad.Logger        ( runLoggingT )
+import Control.Monad.Logger        ( LogStr, runLoggingT )
 import Control.Monad.Reader        ( MonadReader, ReaderT, ask, asks, local, runReaderT )
 import Control.Monad.Trans.AWS     ( AWST, Env, Error, paginate, send, send_, runAWST )
 import Control.Monad.Trans.Class   ( MonadTrans, lift )
@@ -46,8 +46,10 @@ import Control.Monad.Trans.Control ( MonadBaseControl
                                    , restoreT )
 import Data.Conduit                ( ($$) )
 import Data.Conduit.List           ( consume )
+import Data.HashMap.Strict         ( fromList, lookup )
 import Network.AWS.SWF
 import Network.AWS.SWF.Flow.Types
+import Prelude              hiding ( lookup )
 import Safe                        ( headMay )
 
 -- FlowT
@@ -134,10 +136,15 @@ runAWS env action = do
 hoistFlowEither :: MonadError FlowError m => Either FlowError a -> m a
 hoistFlowEither = either throwError return
 
-runDecide :: (MonadError FlowError m, MonadIO m) => DecideEnv -> DecideT m a -> m a
-runDecide env action = do
+runDecide :: (MonadError FlowError m, MonadIO m)
+          => (LogStr -> IO ()) -> Uid -> Plan -> [HistoryEvent] -> DecideT m a -> m a
+runDecide logger uid plan events action = do
   r <- runDecideT env action
-  hoistFlowEither r
+  hoistFlowEither r where
+    env = DecideEnv logger uid plan events findEvent where
+      findEvent =
+        (flip lookup) $ fromList $ (flip map) events $ \e ->
+          (e ^. heEventId, e)
 
 maybeToEither :: e -> Maybe a -> Either e a
 maybeToEither e a = maybe (Left e) Right a
@@ -184,6 +191,11 @@ respondActivityTaskCompletedAction token result =
   runAWS feEnv $
     send_ $ respondActivityTaskCompleted token &
       ratcResult .~ result
+
+respondActivityTaskFailedAction :: MonadFlow m => Token -> m ()
+respondActivityTaskFailedAction token =
+  runAWS feEnv $
+    send_ $ respondActivityTaskFailed token
 
 pollForDecisionTaskAction :: MonadFlow m
                           => Domain -> Uid -> Queue -> m (Maybe Token, [HistoryEvent])

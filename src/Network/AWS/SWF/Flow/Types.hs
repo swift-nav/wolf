@@ -9,7 +9,7 @@ import Control.Monad.IO.Class      ( MonadIO )
 import Control.Monad.Except        ( ExceptT, MonadError )
 import Control.Monad.Logger        ( LoggingT, MonadLogger, LogStr )
 import Control.Monad.Reader        ( ReaderT, MonadReader )
-import Control.Monad.Trans.AWS     ( Credentials, Env, Error, LogLevel, Region )
+import Control.Monad.Trans.AWS     ( Env, Error )
 import Control.Monad.Trans.Control ( MonadBaseControl )
 import Data.Text                   ( Text )
 import Network.AWS.SWF.Types       ( HistoryEvent )
@@ -23,18 +23,8 @@ type Token    = Text
 type Timeout  = Text
 type Metadata = Maybe Text
 
-type Logger   = LogStr -> IO ()
-
-data FlowConfig = FlowConfig
-  { fcRegion      :: Region
-  , fcCredentials :: Credentials
-  , fcTimeout     :: Int
-  , fcPollTimeout :: Int
-  , fcLogLevel    :: LogLevel
-  } deriving ( Eq )
-
 data FlowEnv = FlowEnv
-  { feLogger  :: Logger
+  { feLogger  :: LogStr -> IO ()
   , feEnv     :: Env
   , fePollEnv :: Env
   }
@@ -66,7 +56,7 @@ type MonadFlow m =
   )
 
 data DecideEnv = DecideEnv
-  { deLogger    :: Logger
+  { deLogger    :: LogStr -> IO ()
   , deUid       :: Uid
   , dePlan      :: Plan
   , deEvents    :: [HistoryEvent]

@@ -4,72 +4,53 @@
 {-# LANGUAGE RecordWildCards   #-}
 
 module Network.AWS.SWF.Flow
-  ( defaultConfig
-  , runFlow
-  , register
+  ( register
   , execute
   , act
   , decide
+  , runFlowT
+  , Domain
+  , Uid
+  , Name
+  , Version
+  , Queue
+  , Token
+  , Timeout
+  , Metadata
+  , FlowEnv (..)
+  , FlowError
+  , FlowT
+  , MonadFlow
+  , Task
+  , Timer
+  , Start
+  , Spec (..)
+  , End (..)
+  , Plan
   ) where
 
-import Control.Lens                  ( (^.), (.~), (<&>) )
+import Control.Lens                  ( (^.) )
 import Control.Monad                 ( foldM )
 import Control.Monad.Except          ( throwError )
 import Control.Monad.Reader          ( asks )
 import Data.List                     ( find )
-import Data.HashMap.Strict           ( fromList, lookup )
-import Control.Monad.Trans.AWS       ( Region(..)
-                                     , Credentials(..)
-                                     , LogLevel(..)
-                                     , envLogger
-                                     , newLogger
-                                     , newEnv )
-import Control.Monad.Trans.Except    ( runExceptT )
 import Network.AWS.SWF
 import Network.AWS.SWF.Flow.Internal
 import Network.AWS.SWF.Flow.Types
-import Network.HTTP.Conduit          ( conduitManagerSettings )
-import Network.HTTP.Client           ( ManagerSettings(..), withManager )
-import Prelude                hiding ( lookup )
 import Safe                          ( headMay, tailMay )
-import System.Log.FastLogger         ( newStderrLoggerSet, defaultBufSize, pushLogStr )
-import System.IO                     ( stderr )
 
 -- Interface
 
-defaultConfig :: FlowConfig
-defaultConfig = FlowConfig
-  { fcRegion      = NorthVirginia
-  , fcCredentials = FromEnv "AWS_ACCESS_KEY_ID" "AWS_SECRET_ACCESS_KEY"
-  , fcTimeout     = 5000000
-  , fcPollTimeout = 70000000
-  , fcLogLevel    = Info
-  }
-
-runFlow :: FlowConfig -> FlowT IO a -> IO (Either FlowError a)
-runFlow FlowConfig{..} action = do
-  let managerSettings timeout =
-        conduitManagerSettings { managerResponseTimeout = Just timeout }
-  let newEnv' manager =
-        runExceptT (newEnv fcRegion fcCredentials manager) >>= either error return
-  withManager (managerSettings fcTimeout) $ \manager ->
-    withManager (managerSettings fcPollTimeout) $ \pollManager -> do
-      loggerSet <- newStderrLoggerSet defaultBufSize
-      logger <- newLogger fcLogLevel stderr
-      env <- newEnv' manager <&> envLogger .~ logger
-      pollEnv <- newEnv' pollManager <&> envLogger .~ logger
-      runFlowT (FlowEnv (pushLogStr loggerSet) env pollEnv) action
-
 register :: MonadFlow m => Domain -> Plan -> m [()]
 register domain Plan{..} = do
-  let go rs Work{..} = do
-        r <- registerActivityTypeAction domain (tskName wrkTask) (tskVersion wrkTask)
-        return (r : rs)
-      go rs Sleep{..} = return rs
   r <- registerDomainAction domain
   s <- registerWorkflowTypeAction domain (tskName $ strtTask plnStart)
          (tskVersion $ strtTask plnStart)
-  foldM go [s, r] plnSpecs
+  foldM go [s, r] plnSpecs where
+    go rs Work{..} = do
+      r <- registerActivityTypeAction domain (tskName wrkTask) (tskVersion wrkTask)
+      return (r : rs)
+    go rs Sleep{..} = return rs
 
 execute :: MonadFlow m => Domain -> Uid -> Task -> Metadata -> m ()
 execute domain uid Task{..} input =
@@ -86,17 +67,10 @@ decide domain uid plan@Plan{..} = do
    (token', events) <- pollForDecisionTaskAction domain uid (tskQueue $ strtTask plnStart)
    token <- maybeFlowError (FlowError "No Token") token'
    logger <- asks feLogger
-   decisions <- runDecide (decideEnv logger uid plan events) select
+   decisions <- runDecide logger uid plan events select
    respondDecisionTaskCompletedAction token decisions
 
 -- Helpers
-
-decideEnv :: Logger -> Uid -> Plan -> [HistoryEvent] -> DecideEnv
-decideEnv logger uid plan events =
-  DecideEnv logger uid plan events findEvent where
-    findEvent =
-      (flip lookup) $ fromList $ (flip map) events $ \e ->
-        (e ^. heEventId, e)
 
 nextEvent :: MonadDecide m => [EventType] -> m HistoryEvent
 nextEvent ets = do
