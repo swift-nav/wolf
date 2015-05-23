@@ -9,7 +9,9 @@
 module Network.AWS.SWF.Flow.Internal
   ( runFlowT
   , runDecide
-  , maybeFlowError
+  , throwStringError
+  , hoistStringEither
+  , maybeToFlowError
   , registerDomainAction
   , registerActivityTypeAction
   , registerWorkflowTypeAction
@@ -25,7 +27,9 @@ module Network.AWS.SWF.Flow.Internal
   , continueAsNewWorkflowExecutionDecision
   ) where
 
+import Control.Applicative         ( (<$>), (<*>) )
 import Control.Lens                ( (^.), (.~), (&) )
+import Control.Monad               ( msum, mzero )
 import Control.Monad.Base          ( MonadBase, liftBase, liftBaseDefault )
 import Control.Monad.Except        ( MonadError, ExceptT, runExceptT, throwError )
 import Control.Monad.IO.Class      ( MonadIO )
@@ -44,6 +48,7 @@ import Control.Monad.Trans.Control ( MonadBaseControl
                                    , defaultRestoreM
                                    , restoreM
                                    , restoreT )
+import Data.Aeson                  ( FromJSON, Value(..), parseJSON, (.:) )
 import Data.Conduit                ( ($$) )
 import Data.Conduit.List           ( consume )
 import Data.HashMap.Strict         ( fromList, lookup )
@@ -122,6 +127,55 @@ instance Monad m => MonadReader DecideEnv (DecideT m) where
   ask = DecideT ask
   local f = DecideT . local f . unDecideT
 
+-- Planning
+
+instance FromJSON Plan where
+  parseJSON (Object v) =
+    Plan           <$>
+      v .: "start" <*>
+      v .: "specs" <*>
+      v .: "end"
+  parseJSON _ = mzero
+
+instance FromJSON Spec where
+  parseJSON (Object v) =
+    msum
+      [ Work           <$>
+          v .: "work"
+      , Sleep          <$>
+          v .: "sleep"
+      ]
+  parseJSON _ =
+    mzero
+
+instance FromJSON End where
+  parseJSON (String v)
+    | v == "stop"     = return Stop
+    | v == "continue" = return Continue
+    | otherwise = mzero
+  parseJSON _ = mzero
+
+instance FromJSON Start where
+  parseJSON (Object v) =
+    Start         <$>
+      v .: "flow"
+  parseJSON _ = mzero
+
+instance FromJSON Task where
+  parseJSON (Object v) =
+    Task             <$>
+      v .: "name"    <*>
+      v .: "version" <*>
+      v .: "queue"
+  parseJSON _ = mzero
+
+instance FromJSON Timer where
+  parseJSON (Object v) =
+    Timer            <$>
+      v .: "name"    <*>
+      v .: "timeout"
+  parseJSON _ = mzero
+
 -- Helpers
 
 hoistAWSEither :: MonadError FlowError m => Either Error a -> m a
@@ -133,24 +187,28 @@ runAWS env action = do
   r <- runAWST e $ action
   hoistAWSEither r
 
-hoistFlowEither :: MonadError FlowError m => Either FlowError a -> m a
-hoistFlowEither = either throwError return
+throwStringError :: MonadError FlowError m => String -> m a
+throwStringError = throwError . FlowError
+
+hoistStringEither :: MonadError FlowError m => Either String a -> m a
+hoistStringEither = either throwStringError return
 
 runDecide :: (MonadError FlowError m, MonadIO m)
           => (LogStr -> IO ()) -> Uid -> Plan -> [HistoryEvent] -> DecideT m a -> m a
 runDecide logger uid plan events action = do
-  r <- runDecideT env action
-  hoistFlowEither r where
+  runDecideT env action >>= hoistFlowEither
+  where
     env = DecideEnv logger uid plan events findEvent where
       findEvent =
         (flip lookup) $ fromList $ (flip map) events $ \e ->
           (e ^. heEventId, e)
+    hoistFlowEither = either throwError return
 
 maybeToEither :: e -> Maybe a -> Either e a
 maybeToEither e a = maybe (Left e) Right a
 
-maybeFlowError :: MonadError FlowError m => FlowError -> Maybe a -> m a
-maybeFlowError e = hoistFlowEither . maybeToEither e
+maybeToFlowError :: MonadError FlowError m => String -> Maybe a -> m a
+maybeToFlowError e = hoistStringEither . maybeToEither e
 
 -- Actions
 

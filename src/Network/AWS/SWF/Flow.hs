@@ -9,6 +9,9 @@ module Network.AWS.SWF.Flow
   , act
   , decide
   , runFlowT
+  , throwStringError
+  , hoistStringEither
+  , maybeToFlowError
   , Domain
   , Uid
   , Name
@@ -18,20 +21,19 @@ module Network.AWS.SWF.Flow
   , Timeout
   , Metadata
   , FlowEnv (..)
-  , FlowError (..)
+  , FlowError
   , FlowT
   , MonadFlow
-  , Task
-  , Timer
-  , Start
+  , Task (..)
+  , Timer (..)
+  , Start (..)
   , Spec (..)
   , End (..)
-  , Plan
+  , Plan (..)
   ) where
 
 import Control.Lens                  ( (^.) )
 import Control.Monad                 ( foldM )
-import Control.Monad.Except          ( throwError )
 import Control.Monad.Reader          ( asks )
 import Data.List                     ( find )
 import Network.AWS.SWF
@@ -68,7 +70,7 @@ act domain uid Task{..} action = do
 decide :: MonadFlow m => Domain -> Uid -> Plan -> m ()
 decide domain uid plan@Plan{..} = do
    (token', events) <- pollForDecisionTaskAction domain uid (tskQueue $ strtTask plnStart)
-   token <- maybeFlowError (FlowError "No Token") token'
+   token <- maybeToFlowError "No Token" token'
    logger <- asks feLogger
    decisions <- runDecide logger uid plan events select
    respondDecisionTaskCompletedAction token decisions
@@ -78,7 +80,7 @@ decide domain uid plan@Plan{..} = do
 nextEvent :: MonadDecide m => [EventType] -> m HistoryEvent
 nextEvent ets = do
   events <- asks deEvents
-  maybeFlowError (FlowError "No Next Event") $ (flip find) events $ \e ->
+  maybeToFlowError "No Next Event" $ (flip find) events $ \e ->
     elem (e ^. heEventType) ets
 
 workNext :: MonadDecide m => Name -> m (Maybe Spec)
@@ -102,11 +104,11 @@ select = do
     WorkflowExecutionStarted -> start event
     ActivityTaskCompleted    -> completed event
     TimerFired               -> timer event
-    _                        -> throwError (FlowError "Unknown Select Event")
+    _                        -> throwStringError "Unknown Select Event"
 
 start :: MonadDecide m => HistoryEvent -> m [Decision]
 start event = do
-  input <- maybeFlowError (FlowError "No Start Information") $ do
+  input <- maybeToFlowError "No Start Information" $ do
     attrs <- event ^. heWorkflowExecutionStartedEventAttributes
     return $ attrs ^. weseaInput
   specs <- asks (plnSpecs . dePlan)
@@ -115,7 +117,7 @@ start event = do
 completed :: MonadDecide m => HistoryEvent -> m [Decision]
 completed event = do
   findEvent <- asks deFindEvent
-  (input, name) <- maybeFlowError (FlowError "No Completed Information") $ do
+  (input, name) <- maybeToFlowError "No Completed Information" $ do
     attrs <- event ^. heActivityTaskCompletedEventAttributes
     event' <- findEvent $ attrs ^. atceaScheduledEventId
     attrs' <- event' ^. heActivityTaskScheduledEventAttributes
@@ -126,7 +128,7 @@ completed event = do
 timer :: MonadDecide m => HistoryEvent -> m [Decision]
 timer event = do
   findEvent <- asks deFindEvent
-  name <- maybeFlowError (FlowError "No Timer Information") $ do
+  name <- maybeToFlowError "No Timer Information" $ do
     attrs <- event ^. heTimerFiredEventAttributes
     event' <- findEvent $ attrs ^. tfeaStartedEventId
     attrs' <- event' ^. heTimerStartedEventAttributes
@@ -135,11 +137,11 @@ timer event = do
   case event' ^. heEventType of
     WorkflowExecutionStarted -> timerStart event' name
     ActivityTaskCompleted    -> timerCompleted event' name
-    _                        -> throwError (FlowError "Unknown Timer Event")
+    _                        -> throwStringError "Unknown Timer Event"
 
 timerStart :: MonadDecide m => HistoryEvent -> Name -> m [Decision]
 timerStart event name = do
-  input <- maybeFlowError (FlowError "No Timer Start Information") $ do
+  input <- maybeToFlowError "No Timer Start Information" $ do
     attrs <- event ^. heWorkflowExecutionStartedEventAttributes
     return $ attrs ^. weseaInput
   next <- sleepNext name
@@ -147,7 +149,7 @@ timerStart event name = do
 
 timerCompleted :: MonadDecide m => HistoryEvent -> Name -> m [Decision]
 timerCompleted event name = do
-  input <- maybeFlowError (FlowError "No Timer Completed Information") $ do
+  input <- maybeToFlowError "No Timer Completed Information" $ do
     attrs <- event ^. heActivityTaskCompletedEventAttributes
     return $ attrs ^. atceaResult
   next <- sleepNext name
@@ -181,7 +183,7 @@ scheduleEnd input = do
 scheduleContinue :: MonadDecide m => m [Decision]
 scheduleContinue = do
   event <- nextEvent [WorkflowExecutionStarted]
-  input <- maybeFlowError (FlowError "No Continue Start Information") $ do
+  input <- maybeToFlowError "No Continue Start Information" $ do
     attrs <- event ^. heWorkflowExecutionStartedEventAttributes
     return $ attrs ^. weseaInput
   task <- asks (strtTask . plnStart . dePlan)

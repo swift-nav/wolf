@@ -91,8 +91,8 @@ data Task = Task
   } deriving ( Eq, Read, Show )
 
 data Timer = Timer
-  { tmrName    :: Text
-  , tmrTimeout :: Text
+  { tmrName    :: Name
+  , tmrTimeout :: Timeout
   } deriving ( Eq, Read, Show )
 
 data Start = Start
@@ -107,9 +107,10 @@ data Spec
   { slpTimer :: Timer
   } deriving ( Eq, Read, Show )
 
-data End = Stop
-         | Continue
-         deriving ( Eq, Read, Show )
+data End
+  = Stop
+  | Continue
+  deriving ( Eq, Read, Show )
 
 data Plan = Plan
   { plnStart :: Start
