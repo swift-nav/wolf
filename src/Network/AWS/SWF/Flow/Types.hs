@@ -9,7 +9,7 @@ import Control.Monad.IO.Class      ( MonadIO )
 import Control.Monad.Except        ( ExceptT, MonadError )
 import Control.Monad.Logger        ( LoggingT, MonadLogger, LogStr )
 import Control.Monad.Reader        ( ReaderT, MonadReader )
-import Control.Monad.Trans.AWS     ( Env, Error )
+import Control.Monad.Trans.AWS     ( Credentials, Env, Error, Region )
 import Control.Monad.Trans.Control ( MonadBaseControl )
 import Data.Text                   ( Text )
 import Network.AWS.SWF.Types       ( HistoryEvent )
@@ -22,6 +22,13 @@ type Queue    = Text
 type Token    = Text
 type Timeout  = Text
 type Metadata = Maybe Text
+
+data FlowConfig = FlowConfig
+  { fcRegion      :: Region
+  , fcCredentials :: Credentials
+  , fcTimeout     :: Int
+  , fcPollTimeout :: Int
+  }
 
 data FlowEnv = FlowEnv
   { feLogger  :: LogStr -> IO ()

@@ -3,28 +3,31 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Network.AWS.SWF.Flow.Helper where
+module Network.AWS.SWF.Flow.Helper
+  ( flowEnv
+  , newUid
+  , FlowConfig (..)
+  ) where
 
-import Control.Applicative
-import Control.Lens
-import Control.Monad
-import Control.Monad.Except
+import Control.Applicative        ( (<$>), (<*>) )
+import Control.Lens               ( (.~), (<&>) )
+import Control.Monad              ( mzero )
+import Control.Monad.Except       ( runExceptT )
 import Control.Monad.Trans.AWS
 import Data.Aeson
-import Network.AWS.SWF.Flow
-import Network.HTTP.Conduit
-import System.Log.FastLogger
-import System.IO
+import Data.Text                  ( Text, pack )
 import Data.UUID                  ( toString )
 import Data.UUID.V4               ( nextRandom )
-import Data.Text                  ( Text, pack )
-
-data Config = Config
-  { cRegion      :: Region
-  , cCredentials :: Credentials
-  , cTimeout     :: Int
-  , cPollTimeout :: Int
-  }
+import Network.AWS.SWF.Flow
+import Network.AWS.SWF.Flow.Types
+import Network.HTTP.Conduit       ( conduitManagerSettings
+                                  , managerResponseTimeout
+                                  , newManager )
+import System.Log.FastLogger      ( defaultBufSize
+                                  , flushLogStr
+                                  , newStderrLoggerSet
+                                  , pushLogStr )
+import System.IO                  ( stderr )
 
 instance FromJSON Region where
   parseJSON (String v)
@@ -45,33 +48,33 @@ instance FromJSON Region where
 
 instance FromJSON Credentials where
   parseJSON (Object v) =
-    FromEnv <$>
+    FromEnv                     <$>
       v .: "access-key-env-var" <*>
       v .: "secret-key-env-var"
   parseJSON _ = mzero
 
-instance FromJSON Config where
+instance FromJSON FlowConfig where
   parseJSON (Object v) =
-    Config <$>
+    FlowConfig            <$>
       v .: "region"       <*>
       v .: "credentials"  <*>
       v .: "timeout"      <*>
       v .: "poll-timeout"
   parseJSON _ = mzero
 
-flowEnv :: Config -> IO FlowEnv
-flowEnv Config{..} = do
+flowEnv :: FlowConfig -> IO FlowEnv
+flowEnv FlowConfig{..} = do
   loggerSet <- newStderrLoggerSet defaultBufSize
   logger <- newLogger Info stderr
-  manager <- newManager (managerSettings cTimeout)
-  pollManager <- newManager (managerSettings cPollTimeout)
+  manager <- newManager (managerSettings fcTimeout)
+  pollManager <- newManager (managerSettings fcPollTimeout)
   env <- newEnv' manager <&> envLogger .~ logger
   pollEnv <- newEnv' pollManager <&> envLogger .~ logger
   return $ FlowEnv (logStrLn loggerSet) env pollEnv where
     managerSettings timeout =
       conduitManagerSettings { managerResponseTimeout = Just timeout }
     newEnv' m =
-      runExceptT (newEnv cRegion cCredentials m) >>= either error return
+      runExceptT (newEnv fcRegion fcCredentials m) >>= either error return
     logStrLn ls s =
       pushLogStr ls s >> flushLogStr ls
 
