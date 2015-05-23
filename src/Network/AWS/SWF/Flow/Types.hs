@@ -1,49 +1,119 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ConstraintKinds            #-}
+
 module Network.AWS.SWF.Flow.Types where
 
-import Control.Monad.Trans.AWS ( Credentials, Env, Error, LogLevel, Region )
-import Data.Text               ( Text )
-import System.IO               ( Handle )
+import Control.Applicative         ( Applicative )
+import Control.Monad.Catch         ( MonadCatch, MonadThrow )
+import Control.Monad.IO.Class      ( MonadIO )
+import Control.Monad.Except        ( ExceptT, MonadError )
+import Control.Monad.Logger        ( LoggingT, MonadLogger, LogStr )
+import Control.Monad.Reader        ( ReaderT, MonadReader )
+import Control.Monad.Trans.AWS     ( Env, Error )
+import Control.Monad.Trans.Control ( MonadBaseControl )
+import Data.Text                   ( Text )
+import Network.AWS.SWF.Types       ( HistoryEvent )
 
+type Domain   = Text
+type Uid      = Text
+type Name     = Text
+type Version  = Text
+type Queue    = Text
+type Token    = Text
+type Timeout  = Text
+type Metadata = Maybe Text
 
-type EitherE = Either Error
-
-data Config = Config
-  { cfgRegion      :: Region
-  , cfgCredentials :: Credentials
-  , cfgTimeout     :: Int
-  , cfgPollTimeout :: Int
-  , cfgLogLevel    :: LogLevel
-  , cfgLogHandle   :: Handle
-  } deriving ( Eq )
-
-data Context = Context
-  { ctxUid     :: Text
-  , ctxEnv     :: Env
-  , ctxPollEnv :: Env
+data FlowEnv = FlowEnv
+  { feLogger  :: LogStr -> IO ()
+  , feEnv     :: Env
+  , fePollEnv :: Env
   }
 
+data FlowError
+  = FlowError String
+  | AWSError Error
+  deriving ( Show )
+
+newtype FlowT m a = FlowT
+  { unFlowT :: LoggingT (ReaderT FlowEnv (ExceptT FlowError m)) a
+  } deriving ( Functor
+             , Applicative
+             , Monad
+             , MonadIO
+             , MonadLogger
+             , MonadCatch
+             , MonadThrow
+             , MonadError FlowError
+             )
+
+type MonadFlow m =
+  ( MonadBaseControl IO m
+  , MonadCatch m
+  , MonadIO m
+  , MonadLogger m
+  , MonadReader FlowEnv m
+  , MonadError FlowError m
+  )
+
+data DecideEnv = DecideEnv
+  { deLogger    :: LogStr -> IO ()
+  , deUid       :: Uid
+  , dePlan      :: Plan
+  , deEvents    :: [HistoryEvent]
+  , deFindEvent :: Integer -> Maybe HistoryEvent
+  }
+
+newtype DecideT m a = DecideT
+  { unDecideT :: LoggingT (ReaderT DecideEnv (ExceptT FlowError m)) a
+  } deriving ( Functor
+             , Applicative
+             , Monad
+             , MonadIO
+             , MonadLogger
+             , MonadCatch
+             , MonadThrow
+             , MonadError FlowError
+             )
+
+type MonadDecide m =
+  ( MonadBaseControl IO m
+  , MonadCatch m
+  , MonadIO m
+  , MonadLogger m
+  , MonadReader DecideEnv m
+  , MonadError FlowError m
+  )
+
 data Task = Task
-  { tskName    :: Text
-  , tskVersion :: Text
-  , tskList    :: Text
+  { tskName    :: Name
+  , tskVersion :: Version
+  , tskQueue   :: Queue
   } deriving ( Eq, Read, Show )
 
 data Timer = Timer
-  { tmrName    :: Text
-  , tmrTimeout :: Text
+  { tmrName    :: Name
+  , tmrTimeout :: Timeout
   } deriving ( Eq, Read, Show )
 
-data Spec = Start
+data Start = Start
   { strtTask :: Task
-  , strtNext :: Spec
-  }
-  | Done
-  | Continue
-  | Work
-  { wrkTask  :: Task
-  , wrkNext  :: Spec
+  } deriving ( Eq, Read, Show )
+
+data Spec
+  = Work
+  { wrkTask :: Task
   }
   | Sleep
   { slpTimer :: Timer
-  , slpNext  :: Spec
+  } deriving ( Eq, Read, Show )
+
+data End
+  = Stop
+  | Continue
+  deriving ( Eq, Read, Show )
+
+data Plan = Plan
+  { plnStart :: Start
+  , plnSpecs :: [Spec]
+  , plnEnd   :: End
   } deriving ( Eq, Read, Show )
