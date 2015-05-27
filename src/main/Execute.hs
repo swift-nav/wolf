@@ -21,7 +21,7 @@ argsPI :: ParserInfo Args
 argsPI =
   info ( helper <*> argsP )
     ( fullDesc
-    <> header   "excute: Execute a workflow"
+    <> header   "execute: Execute a workflow"
     <> progDesc "Execute a workflow" ) where
     argsP = args
       <$> strOption

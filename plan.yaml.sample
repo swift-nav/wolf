@@ -1,0 +1,23 @@
+---
+  start:
+    flow:
+      name: "CaptureAnalysisWorkflow"
+      version: "1.0"
+      queue: "workflow-tasklist"
+  specs:
+    -
+      work:
+        name: "CaptureWorker"
+        version: "1.0"
+        queue: "capture-tasklist"
+    -
+      sleep:
+        name: "LogCollection"
+        timeout: "30"
+    -
+      work:
+        name: "AnalysisWorker"
+        version: "1.0"
+        queue: "analysis-tasklist"
+  end: "continue"
+
