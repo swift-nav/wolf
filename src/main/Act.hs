@@ -5,7 +5,8 @@
 module Act ( main ) where
 
 import Control.Exception           ( SomeException )
-import Control.Monad               ( mzero )
+import Control.Monad               ( forever, mzero )
+import Control.Monad.IO.Class      ( MonadIO )
 import Data.Text                   ( Text, pack, append )
 import Data.Yaml
 import Network.AWS.SWF.Flow        ( Domain, Queue, Metadata, runFlowT, act )
@@ -13,7 +14,6 @@ import Network.AWS.SWF.Flow.Helper ( flowEnv, newUid )
 import Options.Applicative  hiding ( action )
 import Shelly               hiding ( FilePath )
 import Prelude              hiding ( readFile, writeFile )
-import Control.Monad.IO.Class      ( MonadIO )
 
 data Container = Container
   { cImage :: Text
@@ -98,12 +98,15 @@ exec container metadata =
 
 main :: IO ()
 main =
-  execParser argsPI >>= call >>= print where
+  execParser argsPI >>= call where
     call Args{..} = do
       config <- decodeFile aConfig >>= hoistMaybe "Bad Config"
       container <- decodeFile aContainer >>= hoistMaybe "Bad Container"
       env <- flowEnv config
-      uid <- newUid
-      runFlowT env $
-        act aDomain uid aQueue (exec container) where
-          hoistMaybe s a = maybe (error s) return a
+      forever $ do
+        uid <- newUid
+        r <- runFlowT env $
+          act aDomain uid aQueue (exec container)
+        print r where
+          hoistMaybe s a =
+            maybe (error s) return a

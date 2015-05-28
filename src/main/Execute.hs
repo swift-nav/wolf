@@ -53,13 +53,15 @@ argsPI =
 
 main :: IO ()
 main =
-  execParser argsPI >>= call >>= print where
+  execParser argsPI >>= call where
     call Args{..} = do
       config <- decodeFile aConfig >>= hoistMaybe "Bad Config"
       plan <- decodeFile aPlan >>= hoistMaybe "Bad Plan"
       input <- readFile aInput
       env <- flowEnv config
       uid <- newUid
-      runFlowT env $
-        execute aDomain uid (strtTask $ plnStart plan) (Just input) where
-          hoistMaybe s a = maybe (error s) return a
+      r <- runFlowT env $
+        execute aDomain uid (strtTask $ plnStart plan) (Just input)
+      print r where
+        hoistMaybe s a =
+          maybe (error s) return a

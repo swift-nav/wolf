@@ -2,6 +2,7 @@
 
 module Decide ( main ) where
 
+import Control.Monad               ( forever )
 import Data.Text                   ( pack )
 import Data.Yaml                   ( decodeFile )
 import Network.AWS.SWF.Flow        ( Domain, runFlowT, decide )
@@ -44,13 +45,16 @@ argsPI =
             }
 
 main :: IO ()
-main =
-  execParser argsPI >>= call >>= print where
+main = do
+  execParser argsPI >>= call where
     call Args{..} = do
       config <- decodeFile aConfig >>= hoistMaybe "Bad Config"
       plan <- decodeFile aPlan >>= hoistMaybe "Bad Plan"
       env <- flowEnv config
-      uid <- newUid
-      runFlowT env $
-        decide aDomain uid plan where
-          hoistMaybe s a = maybe (error s) return a
+      forever $ do
+        uid <- newUid
+        r <- runFlowT env $
+          decide aDomain uid plan
+        print r where
+          hoistMaybe s a =
+            maybe (error s) return a
