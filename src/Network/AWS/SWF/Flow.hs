@@ -61,9 +61,9 @@ execute :: MonadFlow m => Domain -> Uid -> Task -> Metadata -> m ()
 execute domain uid Task{..} input =
   startWorkflowExecutionAction domain uid tskName tskVersion tskQueue input
 
-act :: MonadFlow m => Domain -> Uid -> Task -> (Metadata -> m Metadata) -> m ()
-act domain uid Task{..} action = do
-  (taskToken, input) <- pollForActivityTaskAction domain uid tskQueue
+act :: MonadFlow m => Domain -> Uid -> Queue -> (Metadata -> m Metadata) -> m ()
+act domain uid queue action = do
+  (taskToken, input) <- pollForActivityTaskAction domain uid queue
   output <- action input
   respondActivityTaskCompletedAction taskToken output
 
