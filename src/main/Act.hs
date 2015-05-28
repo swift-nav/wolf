@@ -1,15 +1,17 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Act ( main ) where
 
+import Control.Exception           ( SomeException )
 import Control.Monad               ( mzero )
 import Data.Text                   ( Text, pack, append )
 import Data.Yaml
 import Network.AWS.SWF.Flow        ( Domain, Queue, Metadata, runFlowT, act )
 import Network.AWS.SWF.Flow.Helper ( flowEnv, newUid )
 import Options.Applicative  hiding ( action )
-import Shelly                      ( (</>), run_, shelly, withTmpDir, toTextIgnore, writefile, readfile )
+import Shelly               hiding ( FilePath )
 import Prelude              hiding ( readFile, writeFile )
 import Control.Monad.IO.Class      ( MonadIO )
 
@@ -68,34 +70,40 @@ argsPI =
           , aContainer = container
           }
 
-exec :: MonadIO m => Text -> Container -> m Text
-exec metadata container =
+exec :: MonadIO m => Container -> Metadata -> m Metadata
+exec container metadata =
   shelly $ withTmpDir $ \dir -> do
-    writefile (dir </> pack "input.json") metadata
-    docker (toTextIgnore dir) container
-    readfile (dir </> pack "output.json") where
+    input dir metadata
+    docker dir container
+    output dir where
+      input dir =
+        maybe_ $ writefile $ dir </> pack "input.json" where
+          maybe_ =
+            maybe (return ())
+      output dir =
+        catch_sh_maybe $ readfile $ dir </> pack "output.json" where
+          catch_sh_maybe action =
+            catch_sh (action >>= return . Just) $ \(_ :: SomeException) -> return Nothing
       docker dir Container{..} =
         run_ "docker" $ concat
           [["run"]
           , concat
-              [["-v"
-              , append dir ":/app/data"]
-              , cOpts
-              ]
+            [["-v"
+            , append (toTextIgnore dir) ":/app/data"]
+            , cOpts
+            ]
           , [cImage]
           , cArgs
           ]
 
-handle :: Monad m => Metadata -> m Metadata
-handle a = return a
-
 main :: IO ()
 main =
-  execParser argsPI >>= run >>= print where
-    run Args{..} = do
+  execParser argsPI >>= call >>= print where
+    call Args{..} = do
       config <- decodeFile aConfig >>= hoistMaybe "Bad Config"
+      container <- decodeFile aContainer >>= hoistMaybe "Bad Container"
       env <- flowEnv config
       uid <- newUid
       runFlowT env $
-        act aDomain uid aQueue handle where
+        act aDomain uid aQueue (exec container) where
           hoistMaybe s a = maybe (error s) return a

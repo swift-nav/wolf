@@ -45,8 +45,8 @@ argsPI =
 
 main :: IO ()
 main =
-  execParser argsPI >>= run >>= print where
-    run Args{..} = do
+  execParser argsPI >>= call >>= print where
+    call Args{..} = do
       config <- decodeFile aConfig >>= hoistMaybe "Bad Config"
       plan <- decodeFile aPlan >>= hoistMaybe "Bad Plan"
       env <- flowEnv config

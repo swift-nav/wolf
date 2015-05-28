@@ -89,5 +89,7 @@ executable flow-act
   build-depends:       base >= 4.7 && < 4.8
                      , flow
                      , optparse-applicative >= 0.11.0
+                     , shelly >= 1.6.1
                      , text >= 1.2.0
+                     , transformers >= 0.4.0
                      , yaml >= 0.8.0
