@@ -19,7 +19,6 @@ import Data.Text                  ( Text, pack )
 import Data.UUID                  ( toString )
 import Data.UUID.V4               ( nextRandom )
 import Network.AWS.SWF.Flow
-import Network.AWS.SWF.Flow.Types
 import Network.HTTP.Conduit       ( conduitManagerSettings
                                   , managerResponseTimeout
                                   , newManager )

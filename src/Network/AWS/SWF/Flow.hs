@@ -20,6 +20,7 @@ module Network.AWS.SWF.Flow
   , Token
   , Timeout
   , Metadata
+  , FlowConfig (..)
   , FlowEnv (..)
   , FlowError
   , FlowT
