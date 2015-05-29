@@ -1,4 +1,4 @@
 {
-"session_id": "123",
-"capture_timeout": "30"
+"job_id": "1",
+"capture_timeout": "60"
 }
