@@ -171,8 +171,8 @@ scheduleSpec input spec = do
                input]
     Sleep{..} ->
       return [startTimerDecision uid
-               (tmrTimeout slpTimer)
-               (tmrName slpTimer)]
+               (tmrName slpTimer)
+               (tmrTimeout slpTimer)]
 
 scheduleEnd :: MonadDecide m => Metadata -> m [Decision]
 scheduleEnd input = do
