@@ -16,17 +16,19 @@ import Shelly               hiding ( FilePath )
 import Prelude              hiding ( readFile, writeFile )
 
 data Container = Container
-  { cImage :: Text
-  , cOpts  :: [Text]
-  , cArgs  :: [Text]
+  { cImage   :: Text
+  , cCommand :: Text
+  , cVolumes :: [Text]
+  , cDevices :: [Text]
   } deriving ( Eq, Read, Show )
 
 instance FromJSON Container where
   parseJSON (Object v) =
     Container        <$>
     v .: "image"     <*>
-    v .: "options"   <*>
-    v .: "arguments"
+    v .: "command"   <*>
+    v .: "volumes"   <*>
+    v .: "devices"
   parseJSON _ = mzero
 
 data Args = Args
@@ -87,14 +89,16 @@ exec container metadata =
       docker dir Container{..} =
         run_ "docker" $ concat
           [["run"]
-          , concat
-            [["-v"
-            , append (toTextIgnore dir) ":/app/data"]
-            , cOpts
-            ]
+          , devices
+          , volumes
           , [cImage]
-          , cArgs
-          ]
+          , [cCommand]
+          ] where
+            devices =
+              concatMap (("--device" :) . return) cDevices
+            volumes =
+              concatMap (("--volume" :) . return) $
+                append (toTextIgnore dir) ":/app/data" : cVolumes
 
 main :: IO ()
 main =
