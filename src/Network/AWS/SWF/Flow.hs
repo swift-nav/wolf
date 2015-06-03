@@ -59,8 +59,8 @@ register domain Plan{..} = do
     go rs Sleep{..} = return rs
 
 execute :: MonadFlow m => Domain -> Uid -> Task -> Metadata -> m ()
-execute domain uid Task{..} input =
-  startWorkflowExecutionAction domain uid tskName tskVersion tskQueue input
+execute domain uid Task{..} =
+  startWorkflowExecutionAction domain uid tskName tskVersion tskQueue
 
 act :: MonadFlow m => Domain -> Uid -> Queue -> (Metadata -> m Metadata) -> m ()
 act domain uid queue action = do
@@ -81,8 +81,8 @@ decide domain uid plan@Plan{..} = do
 nextEvent :: MonadDecide m => [EventType] -> m HistoryEvent
 nextEvent ets = do
   events <- asks deEvents
-  maybeToFlowError "No Next Event" $ (flip find) events $ \e ->
-    elem (e ^. heEventType) ets
+  maybeToFlowError "No Next Event" $ flip find events $ \e ->
+    e ^. heEventType `elem` ets
 
 workNext :: MonadDecide m => Name -> m (Maybe Spec)
 workNext name = do

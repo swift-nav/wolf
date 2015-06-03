@@ -45,7 +45,7 @@ argsPI =
             }
 
 main :: IO ()
-main = do
+main =
   execParser argsPI >>= call where
     call Args{..} = do
       config <- decodeFile aConfig >>= hoistMaybe "Bad Config"
@@ -56,5 +56,5 @@ main = do
         r <- runFlowT env $
           decide aDomain uid plan
         print r where
-          hoistMaybe s a =
-            maybe (error s) return a
+          hoistMaybe s =
+            maybe (error s) return

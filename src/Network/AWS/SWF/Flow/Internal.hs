@@ -29,7 +29,7 @@ module Network.AWS.SWF.Flow.Internal
 
 import Control.Applicative         ( (<$>), (<*>) )
 import Control.Lens                ( (^.), (.~), (&) )
-import Control.Monad               ( msum, mzero )
+import Control.Monad               ( msum, mzero, liftM )
 import Control.Monad.Base          ( MonadBase, liftBase, liftBaseDefault )
 import Control.Monad.Except        ( MonadError, ExceptT, runExceptT, throwError )
 import Control.Monad.IO.Class      ( MonadIO )
@@ -184,7 +184,7 @@ hoistAWSEither = either (throwError . AWSError) return
 runAWS :: MonadFlow m => (FlowEnv -> Env) -> AWST m a -> m a
 runAWS env action = do
   e <- asks env
-  r <- runAWST e $ action
+  r <- runAWST e action
   hoistAWSEither r
 
 throwStringError :: MonadError FlowError m => String -> m a
@@ -195,17 +195,17 @@ hoistStringEither = either throwStringError return
 
 runDecide :: (MonadError FlowError m, MonadIO m)
           => (LogStr -> IO ()) -> Uid -> Plan -> [HistoryEvent] -> DecideT m a -> m a
-runDecide logger uid plan events action = do
+runDecide logger uid plan events action =
   runDecideT env action >>= hoistFlowEither
   where
     env = DecideEnv logger uid plan events findEvent where
       findEvent =
-        (flip lookup) $ fromList $ (flip map) events $ \e ->
+        flip lookup $ fromList $ flip map events $ \e ->
           (e ^. heEventId, e)
     hoistFlowEither = either throwError return
 
 maybeToEither :: e -> Maybe a -> Either e a
-maybeToEither e a = maybe (Left e) Right a
+maybeToEither e = maybe (Left e) Right
 
 maybeToFlowError :: MonadError FlowError m => String -> Maybe a -> m a
 maybeToFlowError e = hoistStringEither . maybeToEither e
@@ -229,7 +229,7 @@ registerWorkflowTypeAction domain name version =
 
 startWorkflowExecutionAction :: MonadFlow m
                              => Domain -> Uid -> Name -> Version -> Queue -> Metadata -> m ()
-startWorkflowExecutionAction domain uid name version queue input = do
+startWorkflowExecutionAction domain uid name version queue input =
   runAWS feEnv $
     send_ $ startWorkflowExecution domain uid (workflowType name version) &
       swe1TaskList .~ Just (taskList queue) &
@@ -240,7 +240,7 @@ pollForActivityTaskAction domain uid queue =
   runAWS fePollEnv $ do
     r <- send $ pollForActivityTask domain (taskList queue) &
       pfatIdentity .~ Just uid
-    return $
+    return
       ( r ^. pfatrTaskToken
       , r ^. pfatrInput )
 
@@ -264,8 +264,8 @@ pollForDecisionTaskAction domain uid queue =
       pfdtReverseOrder .~ Just True &
       pfdtMaximumPageSize .~ Just 100)
         $$ consume
-    return $
-      ( headMay rs >>= return . (^. pfdtrTaskToken)
+    return
+      ( liftM (^. pfdtrTaskToken) (headMay rs)
       , concatMap (^. pfdtrEvents) rs)
 
 respondDecisionTaskCompletedAction :: MonadFlow m => Token -> [Decision] -> m ()
@@ -277,7 +277,7 @@ respondDecisionTaskCompletedAction token decisions =
 -- Decisions
 
 scheduleActivityTaskDecision :: Uid -> Name -> Version -> Queue -> Metadata -> Decision
-scheduleActivityTaskDecision uid name version list input = do
+scheduleActivityTaskDecision uid name version list input =
   decision ScheduleActivityTask &
     dScheduleActivityTaskDecisionAttributes .~ Just attrs where
       attrs = scheduleActivityTaskDecisionAttributes (activityType name version) uid &

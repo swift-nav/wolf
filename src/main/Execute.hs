@@ -63,5 +63,5 @@ main =
       r <- runFlowT env $
         execute aDomain uid (strtTask $ plnStart plan) (Just input)
       print r where
-        hoistMaybe s a =
-          maybe (error s) return a
+        hoistMaybe s =
+          maybe (error s) return

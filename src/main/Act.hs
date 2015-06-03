@@ -5,7 +5,7 @@
 module Act ( main ) where
 
 import Control.Exception           ( SomeException )
-import Control.Monad               ( forever, mzero )
+import Control.Monad               ( forever, mzero, liftM )
 import Control.Monad.IO.Class      ( MonadIO )
 import Data.Text                   ( Text, pack, append )
 import Data.Yaml
@@ -85,7 +85,7 @@ exec container metadata =
       output dir =
         catch_sh_maybe $ readfile $ dir </> pack "output.json" where
           catch_sh_maybe action =
-            catch_sh (action >>= return . Just) $ \(_ :: SomeException) -> return Nothing
+            catch_sh (liftM Just action) $ \(_ :: SomeException) -> return Nothing
       docker dir Container{..} =
         run_ "docker" $ concat
           [["run"]
@@ -112,5 +112,5 @@ main =
         r <- runFlowT env $
           act aDomain uid aQueue (exec container)
         print r where
-          hoistMaybe s a =
-            maybe (error s) return a
+          hoistMaybe s =
+            maybe (error s) return

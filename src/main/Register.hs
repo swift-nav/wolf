@@ -52,5 +52,5 @@ main =
       r <- runFlowT env $
         register aDomain plan
       print r where
-        hoistMaybe s a =
-          maybe (error s) return a
+        hoistMaybe s =
+          maybe (error s) return
