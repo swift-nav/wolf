@@ -24,11 +24,11 @@ data Container = Container
 
 instance FromJSON Container where
   parseJSON (Object v) =
-    Container        <$>
-    v .: "image"     <*>
-    v .: "command"   <*>
-    v .: "volumes"   <*>
-    v .: "devices"
+    Container              <$>
+    v .: "image"           <*>
+    v .: "command"         <*>
+    v .:? "volumes" .!= [] <*>
+    v .:? "devices" .!= []
   parseJSON _ = mzero
 
 data Args = Args
