@@ -1,4 +1,4 @@
 {
 "job_id": "1",
-"capture_timeout": "60"
+"capture_timeout": "1800"
 }

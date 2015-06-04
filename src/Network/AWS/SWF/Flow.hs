@@ -50,11 +50,13 @@ register domain Plan{..} = do
   s <- registerWorkflowTypeAction domain
          (tskName $ strtTask plnStart)
          (tskVersion $ strtTask plnStart)
+         (tskTimeout $ strtTask plnStart)
   foldM go [s, r] plnSpecs where
     go rs Work{..} = do
       r <- registerActivityTypeAction domain
              (tskName wrkTask)
              (tskVersion wrkTask)
+             (tskTimeout wrkTask)
       return (r : rs)
     go rs Sleep{..} = return rs
 

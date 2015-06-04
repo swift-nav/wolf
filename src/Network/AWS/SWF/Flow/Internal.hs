@@ -166,7 +166,8 @@ instance FromJSON Task where
     Task             <$>
       v .: "name"    <*>
       v .: "version" <*>
-      v .: "queue"
+      v .: "queue"   <*>
+      v .: "timeout"
   parseJSON _ = mzero
 
 instance FromJSON Timer where
@@ -217,15 +218,21 @@ registerDomainAction domain =
   runAWS feEnv $
     send_ $ registerDomain domain "30"
 
-registerActivityTypeAction :: MonadFlow m => Domain -> Name -> Version -> m ()
-registerActivityTypeAction domain name version =
+registerActivityTypeAction :: MonadFlow m => Domain -> Name -> Version -> Timeout -> m ()
+registerActivityTypeAction domain name version timeout =
   runAWS feEnv $
-    send_ $ registerActivityType domain name version
+    send_ $ registerActivityType domain name version &
+      ratDefaultTaskHeartbeatTimeout .~ Just "NONE" &
+      ratDefaultTaskScheduleToCloseTimeout .~ Just "NONE" &
+      ratDefaultTaskScheduleToStartTimeout .~ Just "60" &
+      ratDefaultTaskStartToCloseTimeout .~ Just timeout
 
-registerWorkflowTypeAction :: MonadFlow m => Domain -> Name -> Version -> m ()
-registerWorkflowTypeAction domain name version =
+registerWorkflowTypeAction :: MonadFlow m => Domain -> Name -> Version -> Timeout -> m ()
+registerWorkflowTypeAction domain name version timeout =
   runAWS feEnv $
-    send_ $ registerWorkflowType domain name version
+    send_ $ registerWorkflowType domain name version &
+      rwtDefaultExecutionStartToCloseTimeout .~ Just timeout &
+      rwtDefaultTaskStartToCloseTimeout .~ Just "60"
 
 startWorkflowExecutionAction :: MonadFlow m
                              => Domain -> Uid -> Name -> Version -> Queue -> Metadata -> m ()
