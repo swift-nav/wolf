@@ -4,12 +4,14 @@
       name: "CaptureAnalysisWorkflow"
       version: "1.0"
       queue: "workflow-tasklist"
+      timeout: "3600"
   specs:
     -
       work:
         name: "CaptureWorker"
         version: "1.0"
         queue: "capture-tasklist"
+        timeout: "500"
     -
       sleep:
         name: "LogCollection"
@@ -19,5 +21,6 @@
         name: "AnalysisWorker"
         version: "1.0"
         queue: "analysis-tasklist"
+        timeout: "500"
   end: "continue"
 

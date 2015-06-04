@@ -95,6 +95,7 @@ data Task = Task
   { tskName    :: Name
   , tskVersion :: Version
   , tskQueue   :: Queue
+  , tskTimeout :: Timeout
   } deriving ( Eq, Read, Show )
 
 data Timer = Timer
