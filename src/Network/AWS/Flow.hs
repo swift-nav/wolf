@@ -3,7 +3,7 @@
 {-# LANGUAGE ConstraintKinds   #-}
 {-# LANGUAGE RecordWildCards   #-}
 
-module Network.AWS.SWF.Flow
+module Network.AWS.Flow
   ( register
   , execute
   , act
@@ -33,14 +33,14 @@ module Network.AWS.SWF.Flow
   , Plan (..)
   ) where
 
-import Control.Lens                  ( (^.) )
-import Control.Monad                 ( foldM )
-import Control.Monad.Reader          ( asks )
-import Data.List                     ( find )
+import Control.Lens              ( (^.) )
+import Control.Monad             ( foldM )
+import Control.Monad.Reader      ( asks )
+import Data.List                 ( find )
 import Network.AWS.SWF
-import Network.AWS.SWF.Flow.Internal
-import Network.AWS.SWF.Flow.Types
-import Safe                          ( headMay, tailMay )
+import Network.AWS.Flow.Internal
+import Network.AWS.Flow.Types
+import Safe                      ( headMay, tailMay )
 
 -- Interface
 

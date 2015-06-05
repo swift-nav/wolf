@@ -1,7 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ConstraintKinds            #-}
 
-module Network.AWS.SWF.Flow.Types where
+module Network.AWS.Flow.Types where
 
 import Control.Applicative         ( Applicative )
 import Control.Monad.Catch         ( MonadCatch, MonadThrow )

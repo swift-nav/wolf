@@ -2,13 +2,13 @@
 
 module Execute ( main ) where
 
-import Data.Text                   ( pack )
-import Data.Text.IO                ( readFile )
-import Data.Yaml                   ( decodeFile )
-import Network.AWS.SWF.Flow        ( Domain, runFlowT, execute, plnStart, strtTask )
-import Network.AWS.SWF.Flow.Helper ( flowEnv, newUid )
+import Data.Text               ( pack )
+import Data.Text.IO            ( readFile )
+import Data.Yaml               ( decodeFile )
+import Network.AWS.Flow        ( Domain, runFlowT, execute, plnStart, strtTask )
+import Network.AWS.Flow.Helper ( flowEnv, newUid )
 import Options.Applicative
-import Prelude hiding              ( readFile )
+import Prelude                 hiding ( readFile )
 
 data Args = Args
   { aDomain :: Domain

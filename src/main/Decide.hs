@@ -2,13 +2,13 @@
 
 module Decide ( main ) where
 
-import Control.Monad               ( forever )
-import Data.Text                   ( pack )
-import Data.Yaml                   ( decodeFile )
-import Network.AWS.SWF.Flow        ( Domain, runFlowT, decide )
-import Network.AWS.SWF.Flow.Helper ( flowEnv, newUid )
+import Control.Monad           ( forever )
+import Data.Text               ( pack )
+import Data.Yaml               ( decodeFile )
+import Network.AWS.Flow        ( Domain, runFlowT, decide )
+import Network.AWS.Flow.Helper ( flowEnv, newUid )
 import Options.Applicative
-import Prelude hiding              ( readFile )
+import Prelude          hiding ( readFile )
 
 data Args = Args
   { aDomain :: Domain

@@ -3,7 +3,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Network.AWS.SWF.Flow.Helper
+module Network.AWS.Flow.Helper
   ( flowEnv
   , newUid
   , FlowConfig (..)
@@ -18,7 +18,7 @@ import Data.Aeson
 import Data.Text                  ( Text, pack )
 import Data.UUID                  ( toString )
 import Data.UUID.V4               ( nextRandom )
-import Network.AWS.SWF.Flow
+import Network.AWS.Flow
 import Network.HTTP.Conduit       ( conduitManagerSettings
                                   , managerResponseTimeout
                                   , newManager )

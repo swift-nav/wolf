@@ -4,16 +4,16 @@
 
 module Act ( main ) where
 
-import Control.Exception           ( SomeException )
-import Control.Monad               ( forever, mzero, liftM )
-import Control.Monad.IO.Class      ( MonadIO )
-import Data.Text                   ( Text, pack, append, words )
+import Control.Exception          ( SomeException )
+import Control.Monad              ( forever, mzero, liftM )
+import Control.Monad.IO.Class     ( MonadIO )
+import Data.Text                  ( Text, pack, append, words )
 import Data.Yaml
-import Network.AWS.SWF.Flow        ( Domain, Queue, Metadata, runFlowT, act )
-import Network.AWS.SWF.Flow.Helper ( flowEnv, newUid )
-import Options.Applicative  hiding ( action )
-import Shelly               hiding ( FilePath )
-import Prelude              hiding ( readFile, words, writeFile )
+import Network.AWS.Flow           ( Domain, Queue, Metadata, runFlowT, act )
+import Network.AWS.Flow.Helper    ( flowEnv, newUid )
+import Options.Applicative hiding ( action )
+import Shelly              hiding ( FilePath )
+import Prelude             hiding ( readFile, words, writeFile )
 
 data Container = Container
   { cImage   :: Text

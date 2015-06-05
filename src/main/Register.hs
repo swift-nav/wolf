@@ -2,10 +2,10 @@
 
 module Register ( main ) where
 
-import Data.Text                   ( pack )
-import Data.Yaml                   ( decodeFile )
-import Network.AWS.SWF.Flow        ( Domain, runFlowT, register )
-import Network.AWS.SWF.Flow.Helper ( flowEnv )
+import Data.Text               ( pack )
+import Data.Yaml               ( decodeFile )
+import Network.AWS.Flow        ( Domain, runFlowT, register )
+import Network.AWS.Flow.Helper ( flowEnv )
 import Options.Applicative
 
 data Args = Args

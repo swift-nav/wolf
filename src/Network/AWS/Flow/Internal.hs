@@ -6,7 +6,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ConstraintKinds       #-}
 
-module Network.AWS.SWF.Flow.Internal
+module Network.AWS.Flow.Internal
   ( runFlowT
   , runDecide
   , throwStringError
@@ -53,7 +53,7 @@ import Data.Conduit                ( ($$) )
 import Data.Conduit.List           ( consume )
 import Data.HashMap.Strict         ( fromList, lookup )
 import Network.AWS.SWF
-import Network.AWS.SWF.Flow.Types
+import Network.AWS.Flow.Types
 import Prelude              hiding ( lookup )
 import Safe                        ( headMay )
 
