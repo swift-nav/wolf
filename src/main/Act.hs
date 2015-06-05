@@ -74,10 +74,16 @@ argsPI =
 
 exec :: MonadIO m => Container -> Metadata -> m Metadata
 exec container metadata =
-  shelly $ withTmpDir $ \dir -> do
-    input dir metadata
-    docker dir container
-    output dir where
+  shelly $ withDir $ \dataDir storeDir -> do
+    input dataDir metadata
+    docker dataDir container
+    store storeDir
+    output dataDir where
+      withDir action =
+        withTmpDir $ \dir -> do
+          mkdir $ dir </> pack "data"
+          mkdir $ dir </> pack "store"
+          action (dir </> pack "data") (dir </> pack "store")
       input dir =
         maybe_ $ writefile $ dir </> pack "input.json" where
           maybe_ =
@@ -99,6 +105,9 @@ exec container metadata =
             volumes =
               concatMap (("--volume" :) . return) $
                 append (toTextIgnore dir) ":/app/data" : cVolumes
+      store dir = do
+        artifacts <- findWhen test_f dir
+        return ()
 
 main :: IO ()
 main =

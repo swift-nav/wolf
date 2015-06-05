@@ -231,6 +231,7 @@ registerWorkflowTypeAction :: MonadFlow m => Domain -> Name -> Version -> Timeou
 registerWorkflowTypeAction domain name version timeout =
   runAWS feEnv $
     send_ $ registerWorkflowType domain name version &
+      rwtDefaultChildPolicy .~ Just Terminate &
       rwtDefaultExecutionStartToCloseTimeout .~ Just timeout &
       rwtDefaultTaskStartToCloseTimeout .~ Just "60"
 
