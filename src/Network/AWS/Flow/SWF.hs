@@ -18,15 +18,15 @@ module Network.AWS.Flow.SWF
   , continueAsNewWorkflowExecutionDecision
   ) where
 
-import Control.Lens                ( (^.), (.~), (&) )
-import Control.Monad               ( liftM )
-import Control.Monad.Trans.AWS     ( paginate, send, send_ )
-import Data.Conduit                ( ($$) )
-import Data.Conduit.List           ( consume )
+import Control.Lens              ( (^.), (.~), (&) )
+import Control.Monad             ( liftM )
+import Control.Monad.Trans.AWS   ( paginate, send, send_ )
+import Data.Conduit              ( ($$) )
+import Data.Conduit.List         ( consume )
 import Network.AWS.Flow.Types
-import Network.AWS.Flow.Internal   ( runAWS )
+import Network.AWS.Flow.Internal ( runAWS )
 import Network.AWS.SWF
-import Safe                        ( headMay )
+import Safe                      ( headMay )
 
 -- Actions
 

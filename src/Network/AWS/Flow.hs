@@ -39,6 +39,7 @@ import Control.Monad.Reader      ( asks )
 import Data.List                 ( find )
 import Network.AWS.SWF
 import Network.AWS.Flow.Internal
+import Network.AWS.Flow.SWF
 import Network.AWS.Flow.Types
 import Safe                      ( headMay, tailMay )
 
