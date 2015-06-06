@@ -7,7 +7,8 @@
 {-# LANGUAGE ConstraintKinds       #-}
 
 module Network.AWS.Flow.Internal
-  ( runFlowT
+  ( runAWS
+  , runFlowT
   , runDecide
   , throwStringError
   , hoistStringEither
