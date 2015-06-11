@@ -2,15 +2,13 @@
 
 module Register ( main ) where
 
-import Data.Text                   ( pack )
-import Data.Yaml                   ( decodeFile )
-import Network.AWS.SWF.Flow        ( Domain, runFlowT, register )
-import Network.AWS.SWF.Flow.Helper ( flowEnv )
+import Data.Yaml               ( decodeFile )
+import Network.AWS.Flow        ( runFlowT, register )
+import Network.AWS.Flow.Helper ( flowEnv )
 import Options.Applicative
 
 data Args = Args
-  { aDomain :: Domain
-  , aConfig :: FilePath
+  { aConfig :: FilePath
   , aPlan   :: FilePath
   } deriving ( Eq, Read, Show )
 
@@ -22,24 +20,18 @@ argsPI =
     <> progDesc "Register a workflow" ) where
     argsP = args
       <$> strOption
-          (  long    "domain"
-          <> short   'd'
-          <> metavar "NAME"
-          <> help    "AWS Simple Workflow Service domain" )
-      <*> strOption
           (  long    "config"
           <> short   'c'
           <> metavar "FILE"
-          <> help    "AWS Simple Workflow Service Flow config" )
+          <> help    "AWS SWF Service Flow config" )
       <*> strOption
           ( long     "plan"
           <> short   'p'
           <> metavar "FILE"
-          <> help    "AWS Simple Workflow Service Flow plan" ) where
-          args domain config plan = Args
-            { aDomain   = pack domain
-            , aConfig = config
-            , aPlan = plan
+          <> help    "AWS SWF Service Flow plan" ) where
+          args config plan = Args
+            { aConfig = config
+            , aPlan   = plan
             }
 
 main :: IO ()
@@ -50,7 +42,7 @@ main =
       plan <- decodeFile aPlan >>= hoistMaybe "Bad Plan"
       env <- flowEnv config
       r <- runFlowT env $
-        register aDomain plan
+        register plan
       print r where
         hoistMaybe s =
           maybe (error s) return

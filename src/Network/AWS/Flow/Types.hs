@@ -1,7 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ConstraintKinds            #-}
 
-module Network.AWS.SWF.Flow.Types where
+module Network.AWS.Flow.Types where
 
 import Control.Applicative         ( Applicative )
 import Control.Monad.Catch         ( MonadCatch, MonadThrow )
@@ -11,10 +11,12 @@ import Control.Monad.Logger        ( LoggingT, MonadLogger, LogStr )
 import Control.Monad.Reader        ( ReaderT, MonadReader )
 import Control.Monad.Trans.AWS     ( Credentials, Env, Error, Region )
 import Control.Monad.Trans.Control ( MonadBaseControl )
+import Crypto.Hash                 ( Digest, SHA256 )
+import Data.ByteString.Lazy        ( ByteString )
+import Data.Int                    ( Int64 )
 import Data.Text                   ( Text )
 import Network.AWS.SWF.Types       ( HistoryEvent )
 
-type Domain   = Text
 type Uid      = Text
 type Name     = Text
 type Version  = Text
@@ -22,18 +24,23 @@ type Queue    = Text
 type Token    = Text
 type Timeout  = Text
 type Metadata = Maybe Text
+type Artifact = (Text, Digest SHA256, Int64, ByteString)
 
 data FlowConfig = FlowConfig
   { fcRegion      :: Region
   , fcCredentials :: Credentials
   , fcTimeout     :: Int
   , fcPollTimeout :: Int
+  , fcDomain      :: Text
+  , fcBucket      :: Text
   }
 
 data FlowEnv = FlowEnv
   { feLogger  :: LogStr -> IO ()
   , feEnv     :: Env
   , fePollEnv :: Env
+  , feDomain  :: Text
+  , feBucket  :: Text
   }
 
 data FlowError

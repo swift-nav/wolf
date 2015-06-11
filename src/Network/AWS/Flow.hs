@@ -3,7 +3,7 @@
 {-# LANGUAGE ConstraintKinds   #-}
 {-# LANGUAGE RecordWildCards   #-}
 
-module Network.AWS.SWF.Flow
+module Network.AWS.Flow
   ( register
   , execute
   , act
@@ -12,7 +12,6 @@ module Network.AWS.SWF.Flow
   , throwStringError
   , hoistStringEither
   , maybeToFlowError
-  , Domain
   , Uid
   , Name
   , Version
@@ -20,6 +19,7 @@ module Network.AWS.SWF.Flow
   , Token
   , Timeout
   , Metadata
+  , Artifact
   , FlowConfig (..)
   , FlowEnv (..)
   , FlowError
@@ -33,46 +33,49 @@ module Network.AWS.SWF.Flow
   , Plan (..)
   ) where
 
-import Control.Lens                  ( (^.) )
-import Control.Monad                 ( foldM )
-import Control.Monad.Reader          ( asks )
-import Data.List                     ( find )
+import Control.Lens              ( (^.) )
+import Control.Monad             ( foldM, forM_ )
+import Control.Monad.Reader      ( asks )
+import Data.List                 ( find )
 import Network.AWS.SWF
-import Network.AWS.SWF.Flow.Internal
-import Network.AWS.SWF.Flow.Types
-import Safe                          ( headMay, tailMay )
+import Network.AWS.Flow.Internal
+import Network.AWS.Flow.S3
+import Network.AWS.Flow.SWF
+import Network.AWS.Flow.Types
+import Safe                      ( headMay, tailMay )
 
 -- Interface
 
-register :: MonadFlow m => Domain -> Plan -> m [()]
-register domain Plan{..} = do
-  r <- registerDomainAction domain
-  s <- registerWorkflowTypeAction domain
+register :: MonadFlow m => Plan -> m [()]
+register Plan{..} = do
+  r <- registerDomainAction
+  s <- registerWorkflowTypeAction
          (tskName $ strtTask plnStart)
          (tskVersion $ strtTask plnStart)
          (tskTimeout $ strtTask plnStart)
   foldM go [s, r] plnSpecs where
     go rs Work{..} = do
-      r <- registerActivityTypeAction domain
+      r <- registerActivityTypeAction
              (tskName wrkTask)
              (tskVersion wrkTask)
              (tskTimeout wrkTask)
       return (r : rs)
     go rs Sleep{..} = return rs
 
-execute :: MonadFlow m => Domain -> Uid -> Task -> Metadata -> m ()
-execute domain uid Task{..} =
-  startWorkflowExecutionAction domain uid tskName tskVersion tskQueue
+execute :: MonadFlow m => Uid -> Task -> Metadata -> m ()
+execute uid Task{..} =
+  startWorkflowExecutionAction uid tskName tskVersion tskQueue
 
-act :: MonadFlow m => Domain -> Uid -> Queue -> (Metadata -> m Metadata) -> m ()
-act domain uid queue action = do
-  (taskToken, input) <- pollForActivityTaskAction domain uid queue
-  output <- action input
+act :: MonadFlow m => Uid -> Queue -> (Metadata -> m (Metadata, [Artifact])) -> m ()
+act uid queue action = do
+  (taskToken, input) <- pollForActivityTaskAction uid queue
+  (output, artifacts) <- action input
+  forM_ artifacts $ putObjectAction
   respondActivityTaskCompletedAction taskToken output
 
-decide :: MonadFlow m => Domain -> Uid -> Plan -> m ()
-decide domain uid plan@Plan{..} = do
-   (token', events) <- pollForDecisionTaskAction domain uid (tskQueue $ strtTask plnStart)
+decide :: MonadFlow m => Uid -> Plan -> m ()
+decide uid plan@Plan{..} = do
+   (token', events) <- pollForDecisionTaskAction uid (tskQueue $ strtTask plnStart)
    token <- maybeToFlowError "No Token" token'
    logger <- asks feLogger
    decisions <- runDecide logger uid plan events select
