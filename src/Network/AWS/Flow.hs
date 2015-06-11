@@ -36,7 +36,7 @@ module Network.AWS.Flow
   ) where
 
 import Control.Lens              ( (^.) )
-import Control.Monad             ( foldM )
+import Control.Monad             ( foldM, forM_ )
 import Control.Monad.Reader      ( asks )
 import Data.List                 ( find )
 import Network.AWS.SWF
@@ -72,6 +72,13 @@ act :: MonadFlow m => Domain -> Uid -> Queue -> (Metadata -> m Metadata) -> m ()
 act domain uid queue action = do
   (taskToken, input) <- pollForActivityTaskAction domain uid queue
   output <- action input
+  respondActivityTaskCompletedAction taskToken output
+
+act' :: MonadFlow m => Domain -> Uid -> Queue -> (Metadata -> m (Metadata, [(Key, FilePath)])) -> m ()
+act' domain uid queue action = do
+  (taskToken, input) <- pollForActivityTaskAction domain uid queue
+  (output, artifacts) <- action input
+  forM_ artifacts $ uncurry $ putObjectAction "pail"
   respondActivityTaskCompletedAction taskToken output
 
 decide :: MonadFlow m => Domain -> Uid -> Plan -> m ()
