@@ -31,9 +31,13 @@ library
   ghc-options:         -Wall -fno-warn-orphans
   build-depends:       aeson >= 0.8.0
                      , amazonka >= 0.3.4
+                     , amazonka-s3 >= 0.3.4
                      , amazonka-swf >= 0.3.4
                      , base >= 4.7 && < 4.8
+                     , bytestring >= 0.10.4
                      , conduit >= 1.2.0
+                     , conduit-extra >= 1.1.7
+                     , cryptohash >= 0.11.6
                      , exceptions >= 0.8.0
                      , fast-logger >= 2.3.1
                      , http-conduit >= 2.1.0
@@ -90,6 +94,8 @@ executable flow-act
   ghc-options:         -Wall -fno-warn-orphans -main-is Act
   build-depends:       base >= 4.7 && < 4.8
                      , flow
+                     , bytestring >= 0.10.4
+                     , cryptohash >= 0.11.6
                      , optparse-applicative >= 0.11.0
                      , shelly >= 1.6.1
                      , text >= 1.2.0

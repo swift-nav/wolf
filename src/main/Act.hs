@@ -7,13 +7,16 @@ module Act ( main ) where
 import Control.Exception          ( SomeException )
 import Control.Monad              ( forever, forM, mzero, liftM )
 import Control.Monad.IO.Class     ( MonadIO )
+import Crypto.Hash                ( hash )
+import Data.ByteString            ( length )
+import Data.ByteString.Lazy       ( fromStrict )
 import Data.Text                  ( Text, pack, append, words )
 import Data.Yaml
 import Network.AWS.Flow           ( Artifact, Metadata, Queue, runFlowT, act )
 import Network.AWS.Flow.Helper    ( flowEnv, newUid )
 import Options.Applicative hiding ( action )
 import Shelly              hiding ( FilePath )
-import Prelude             hiding ( readFile, words, writeFile )
+import Prelude             hiding ( length, readFile, words, writeFile )
 
 data Container = Container
   { cImage   :: Text
@@ -91,7 +94,11 @@ exec container metadata =
         forM artifacts $ \artifact -> do
           key <- relativeTo dir artifact
           blob <- readBinary artifact
-          return (toTextIgnore key, blob)
+          return ( toTextIgnore key
+                 , hash blob
+                 , fromIntegral $ length blob
+                 , fromStrict blob
+                 )
       docker dir Container{..} =
         run_ "docker" $ concat
           [["run"]
