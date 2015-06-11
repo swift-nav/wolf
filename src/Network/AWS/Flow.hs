@@ -8,16 +8,13 @@ module Network.AWS.Flow
   , execute
   , act
   , decide
-  , putter
   , runFlowT
   , throwStringError
   , hoistStringEither
   , maybeToFlowError
-  , Domain
   , Uid
   , Name
   , Version
-  , Pail
   , Queue
   , Token
   , Timeout
@@ -48,49 +45,46 @@ import Safe                      ( headMay, tailMay )
 
 -- Interface
 
-register :: MonadFlow m => Domain -> Plan -> m [()]
-register domain Plan{..} = do
-  r <- registerDomainAction domain
-  s <- registerWorkflowTypeAction domain
+register :: MonadFlow m => Plan -> m [()]
+register Plan{..} = do
+  r <- registerDomainAction
+  s <- registerWorkflowTypeAction
          (tskName $ strtTask plnStart)
          (tskVersion $ strtTask plnStart)
          (tskTimeout $ strtTask plnStart)
   foldM go [s, r] plnSpecs where
     go rs Work{..} = do
-      r <- registerActivityTypeAction domain
+      r <- registerActivityTypeAction
              (tskName wrkTask)
              (tskVersion wrkTask)
              (tskTimeout wrkTask)
       return (r : rs)
     go rs Sleep{..} = return rs
 
-execute :: MonadFlow m => Domain -> Uid -> Task -> Metadata -> m ()
-execute domain uid Task{..} =
-  startWorkflowExecutionAction domain uid tskName tskVersion tskQueue
+execute :: MonadFlow m => Uid -> Task -> Metadata -> m ()
+execute uid Task{..} =
+  startWorkflowExecutionAction uid tskName tskVersion tskQueue
 
-act :: MonadFlow m => Domain -> Uid -> Queue -> (Metadata -> m Metadata) -> m ()
-act domain uid queue action = do
-  (taskToken, input) <- pollForActivityTaskAction domain uid queue
+act :: MonadFlow m => Uid -> Queue -> (Metadata -> m Metadata) -> m ()
+act uid queue action = do
+  (taskToken, input) <- pollForActivityTaskAction uid queue
   output <- action input
   respondActivityTaskCompletedAction taskToken output
 
-act' :: MonadFlow m => Domain -> Uid -> Queue -> (Metadata -> m (Metadata, [(Key, FilePath)])) -> m ()
-act' domain uid queue action = do
-  (taskToken, input) <- pollForActivityTaskAction domain uid queue
+act' :: MonadFlow m => Uid -> Queue -> (Metadata -> m (Metadata, [(Key, FilePath)])) -> m ()
+act' uid queue action = do
+  (taskToken, input) <- pollForActivityTaskAction uid queue
   (output, artifacts) <- action input
-  forM_ artifacts $ uncurry $ putObjectAction "pail"
+  forM_ artifacts $ uncurry $ putObjectAction
   respondActivityTaskCompletedAction taskToken output
 
-decide :: MonadFlow m => Domain -> Uid -> Plan -> m ()
-decide domain uid plan@Plan{..} = do
-   (token', events) <- pollForDecisionTaskAction domain uid (tskQueue $ strtTask plnStart)
+decide :: MonadFlow m => Uid -> Plan -> m ()
+decide uid plan@Plan{..} = do
+   (token', events) <- pollForDecisionTaskAction uid (tskQueue $ strtTask plnStart)
    token <- maybeToFlowError "No Token" token'
    logger <- asks feLogger
    decisions <- runDecide logger uid plan events select
    respondDecisionTaskCompletedAction token decisions
-
-putter :: MonadFlow m => Pail -> Key -> FilePath -> m ()
-putter = putObjectAction
 
 -- Helpers
 

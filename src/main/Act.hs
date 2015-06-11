@@ -5,11 +5,11 @@
 module Act ( main ) where
 
 import Control.Exception          ( SomeException )
-import Control.Monad              ( forever, forM_, mzero, liftM )
+import Control.Monad              ( forever, mzero, liftM )
 import Control.Monad.IO.Class     ( MonadIO )
-import Data.Text                  ( Text, pack, append, words, unpack )
+import Data.Text                  ( Text, pack, append, words )
 import Data.Yaml
-import Network.AWS.Flow           ( Domain, Metadata, Pail, Queue, runFlowT, act, putter )
+import Network.AWS.Flow           ( Metadata, Queue, runFlowT, act )
 import Network.AWS.Flow.Helper    ( flowEnv, newUid )
 import Options.Applicative hiding ( action )
 import Shelly              hiding ( FilePath )
@@ -32,11 +32,9 @@ instance FromJSON Container where
   parseJSON _ = mzero
 
 data Args = Args
-  { aDomain    :: Domain
-  , aConfig    :: FilePath
+  { aConfig    :: FilePath
   , aQueue     :: Queue
   , aContainer :: FilePath
-  , aPail      :: Pail
   } deriving ( Eq, Read, Show )
 
 argsPI :: ParserInfo Args
@@ -47,11 +45,6 @@ argsPI =
     <> progDesc "Workflow activity" ) where
     argsP = args
       <$> strOption
-          (  long    "domain"
-          <> short   'd'
-          <> metavar "NAME"
-          <> help    "AWS SWF Service domain" )
-      <*> strOption
           (  long    "config"
           <> short   'c'
           <> metavar "FILE"
@@ -65,22 +58,15 @@ argsPI =
           (  long    "container"
           <> short   'x'
           <> metavar "FILE"
-          <> help    "AWS SWF Service Flow worker container" )
-      <*> strOption
-          (  long    "bucket"
-          <> short   'b'
-          <> metavar "NAME"
-          <> help    "AWS S3 Service bucket" ) where
-        args domain config queue container pail = Args
-          { aDomain    = pack domain
-          , aConfig    = config
+          <> help    "AWS SWF Service Flow worker container" ) where
+        args config queue container = Args
+          { aConfig    = config
           , aQueue     = pack queue
           , aContainer = container
-          , aPail      = pack pail
           }
 
-exec :: MonadIO m => Container -> Pail -> Metadata -> m Metadata
-exec container pail metadata =
+exec :: MonadIO m => Container -> Metadata -> m Metadata
+exec container metadata =
   shelly $ withDir $ \dataDir storeDir -> do
     input dataDir metadata
     docker dataDir container
@@ -129,7 +115,7 @@ main =
       forever $ do
         uid <- newUid
         r <- runFlowT env $
-          act aDomain uid aQueue (exec container aPail)
+          act uid aQueue $ exec container
         print r where
           hoistMaybe s =
             maybe (error s) return

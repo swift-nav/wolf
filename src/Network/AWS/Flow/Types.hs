@@ -14,14 +14,12 @@ import Control.Monad.Trans.Control ( MonadBaseControl )
 import Data.Text                   ( Text )
 import Network.AWS.SWF.Types       ( HistoryEvent )
 
-type Domain   = Text
 type Uid      = Text
 type Name     = Text
 type Version  = Text
 type Queue    = Text
 type Token    = Text
 type Timeout  = Text
-type Pail     = Text
 type Key      = Text
 type Metadata = Maybe Text
 
@@ -30,12 +28,16 @@ data FlowConfig = FlowConfig
   , fcCredentials :: Credentials
   , fcTimeout     :: Int
   , fcPollTimeout :: Int
+  , fcDomain      :: Text
+  , fcBucket      :: Text
   }
 
 data FlowEnv = FlowEnv
   { feLogger  :: LogStr -> IO ()
   , feEnv     :: Env
   , fePollEnv :: Env
+  , feDomain  :: Text
+  , feBucket  :: Text
   }
 
 data FlowError

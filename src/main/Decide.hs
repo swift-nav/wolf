@@ -3,16 +3,14 @@
 module Decide ( main ) where
 
 import Control.Monad           ( forever )
-import Data.Text               ( pack )
 import Data.Yaml               ( decodeFile )
-import Network.AWS.Flow        ( Domain, runFlowT, decide )
+import Network.AWS.Flow        ( runFlowT, decide )
 import Network.AWS.Flow.Helper ( flowEnv, newUid )
 import Options.Applicative
 import Prelude          hiding ( readFile )
 
 data Args = Args
-  { aDomain :: Domain
-  , aConfig :: FilePath
+  { aConfig :: FilePath
   , aPlan   :: FilePath
   } deriving ( Eq, Read, Show )
 
@@ -24,11 +22,6 @@ argsPI =
     <> progDesc "Decide a workflow" ) where
     argsP = args
       <$> strOption
-          (  long    "domain"
-          <> short   'd'
-          <> metavar "NAME"
-          <> help    "AWS SWF Service domain" )
-      <*> strOption
           (  long    "config"
           <> short   'c'
           <> metavar "FILE"
@@ -38,9 +31,8 @@ argsPI =
           <> short   'p'
           <> metavar "FILE"
           <> help    "AWS SWF Service Flow plan" ) where
-          args domain config plan = Args
-            { aDomain = pack domain
-            , aConfig = config
+          args config plan = Args
+            { aConfig = config
             , aPlan   = plan
             }
 
@@ -54,7 +46,7 @@ main =
       forever $ do
         uid <- newUid
         r <- runFlowT env $
-          decide aDomain uid plan
+          decide uid plan
         print r where
           hoistMaybe s =
             maybe (error s) return

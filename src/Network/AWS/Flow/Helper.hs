@@ -58,7 +58,9 @@ instance FromJSON FlowConfig where
       v .: "region"       <*>
       v .: "credentials"  <*>
       v .: "timeout"      <*>
-      v .: "poll-timeout"
+      v .: "poll-timeout" <*>
+      v .: "domain"       <*>
+      v .: "bucket"
   parseJSON _ = mzero
 
 flowEnv :: FlowConfig -> IO FlowEnv
@@ -69,7 +71,7 @@ flowEnv FlowConfig{..} = do
   pollManager <- newManager (managerSettings fcPollTimeout)
   env <- newEnv' manager <&> envLogger .~ logger
   pollEnv <- newEnv' pollManager <&> envLogger .~ logger
-  return $ FlowEnv (logStrLn loggerSet) env pollEnv where
+  return $ FlowEnv (logStrLn loggerSet) env pollEnv fcDomain fcBucket where
     managerSettings timeout =
       conduitManagerSettings { managerResponseTimeout = Just timeout }
     newEnv' m =
