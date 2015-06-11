@@ -19,6 +19,7 @@ module Network.AWS.Flow
   , Token
   , Timeout
   , Metadata
+  , Artifact
   , FlowConfig (..)
   , FlowEnv (..)
   , FlowError
@@ -65,17 +66,11 @@ execute :: MonadFlow m => Uid -> Task -> Metadata -> m ()
 execute uid Task{..} =
   startWorkflowExecutionAction uid tskName tskVersion tskQueue
 
-act :: MonadFlow m => Uid -> Queue -> (Metadata -> m Metadata) -> m ()
+act :: MonadFlow m => Uid -> Queue -> (Metadata -> m (Metadata, [Artifact])) -> m ()
 act uid queue action = do
   (taskToken, input) <- pollForActivityTaskAction uid queue
-  output <- action input
-  respondActivityTaskCompletedAction taskToken output
-
-act' :: MonadFlow m => Uid -> Queue -> (Metadata -> m (Metadata, [(Key, FilePath)])) -> m ()
-act' uid queue action = do
-  (taskToken, input) <- pollForActivityTaskAction uid queue
   (output, artifacts) <- action input
-  forM_ artifacts $ uncurry $ putObjectAction
+  forM_ artifacts $ putObjectAction
   respondActivityTaskCompletedAction taskToken output
 
 decide :: MonadFlow m => Uid -> Plan -> m ()

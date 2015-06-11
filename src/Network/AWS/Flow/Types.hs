@@ -11,6 +11,7 @@ import Control.Monad.Logger        ( LoggingT, MonadLogger, LogStr )
 import Control.Monad.Reader        ( ReaderT, MonadReader )
 import Control.Monad.Trans.AWS     ( Credentials, Env, Error, Region )
 import Control.Monad.Trans.Control ( MonadBaseControl )
+import Data.ByteString             ( ByteString )
 import Data.Text                   ( Text )
 import Network.AWS.SWF.Types       ( HistoryEvent )
 
@@ -20,8 +21,8 @@ type Version  = Text
 type Queue    = Text
 type Token    = Text
 type Timeout  = Text
-type Key      = Text
 type Metadata = Maybe Text
+type Artifact = (Text, ByteString)
 
 data FlowConfig = FlowConfig
   { fcRegion      :: Region
