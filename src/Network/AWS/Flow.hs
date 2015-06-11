@@ -8,6 +8,7 @@ module Network.AWS.Flow
   , execute
   , act
   , decide
+  , putter
   , runFlowT
   , throwStringError
   , hoistStringEither
@@ -16,6 +17,7 @@ module Network.AWS.Flow
   , Uid
   , Name
   , Version
+  , Pail
   , Queue
   , Token
   , Timeout
@@ -39,6 +41,7 @@ import Control.Monad.Reader      ( asks )
 import Data.List                 ( find )
 import Network.AWS.SWF
 import Network.AWS.Flow.Internal
+import Network.AWS.Flow.S3
 import Network.AWS.Flow.SWF
 import Network.AWS.Flow.Types
 import Safe                      ( headMay, tailMay )
@@ -78,6 +81,9 @@ decide domain uid plan@Plan{..} = do
    logger <- asks feLogger
    decisions <- runDecide logger uid plan events select
    respondDecisionTaskCompletedAction token decisions
+
+putter :: MonadFlow m => Pail -> Key -> FilePath -> m ()
+putter = putObjectAction
 
 -- Helpers
 

@@ -28,22 +28,22 @@ argsPI =
           (  long    "domain"
           <> short   'd'
           <> metavar "NAME"
-          <> help    "AWS Simple Workflow Service domain" )
+          <> help    "AWS SWF Service domain" )
       <*> strOption
           (  long    "config"
           <> short   'c'
           <> metavar "FILE"
-          <> help    "AWS Simple Workflow Service Flow config" )
+          <> help    "AWS SWF Service Flow config" )
       <*> strOption
           ( long     "plan"
           <> short   'p'
           <> metavar "FILE"
-          <> help    "AWS Simple Workflow Service Flow plan" )
+          <> help    "AWS SWF Service Flow plan" )
       <*> strOption
           ( long     "input"
           <> short   'i'
           <> metavar "FILE"
-          <> help    "AWS Simple Workflow Service Flow input" ) where
+          <> help    "AWS SWF Service Flow input" ) where
           args domain config plan input = Args
             { aDomain = pack domain
             , aConfig = config

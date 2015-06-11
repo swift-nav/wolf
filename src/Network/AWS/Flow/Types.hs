@@ -21,6 +21,8 @@ type Version  = Text
 type Queue    = Text
 type Token    = Text
 type Timeout  = Text
+type Pail     = Text
+type Key      = Text
 type Metadata = Maybe Text
 
 data FlowConfig = FlowConfig

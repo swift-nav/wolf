@@ -1,6 +1,6 @@
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE ConstraintKinds       #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE ConstraintKinds   #-}
 
 module Network.AWS.Flow.SWF
   ( registerDomainAction

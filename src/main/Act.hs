@@ -5,11 +5,11 @@
 module Act ( main ) where
 
 import Control.Exception          ( SomeException )
-import Control.Monad              ( forever, mzero, liftM )
+import Control.Monad              ( forever, forM_, mzero, liftM )
 import Control.Monad.IO.Class     ( MonadIO )
-import Data.Text                  ( Text, pack, append, words )
+import Data.Text                  ( Text, pack, append, words, unpack )
 import Data.Yaml
-import Network.AWS.Flow           ( Domain, Queue, Metadata, runFlowT, act )
+import Network.AWS.Flow           ( Domain, Metadata, Pail, Queue, runFlowT, act, putter )
 import Network.AWS.Flow.Helper    ( flowEnv, newUid )
 import Options.Applicative hiding ( action )
 import Shelly              hiding ( FilePath )
@@ -25,8 +25,8 @@ data Container = Container
 instance FromJSON Container where
   parseJSON (Object v) =
     Container              <$>
-    v .: "image"           <*>
-    v .: "command"         <*>
+    v .:  "image"          <*>
+    v .:  "command"        <*>
     v .:? "volumes" .!= [] <*>
     v .:? "devices" .!= []
   parseJSON _ = mzero
@@ -36,6 +36,7 @@ data Args = Args
   , aConfig    :: FilePath
   , aQueue     :: Queue
   , aContainer :: FilePath
+  , aPail      :: Pail
   } deriving ( Eq, Read, Show )
 
 argsPI :: ParserInfo Args
@@ -49,31 +50,37 @@ argsPI =
           (  long    "domain"
           <> short   'd'
           <> metavar "NAME"
-          <> help    "AWS Simple Workflow Service domain" )
+          <> help    "AWS SWF Service domain" )
       <*> strOption
           (  long    "config"
           <> short   'c'
           <> metavar "FILE"
-          <> help    "AWS Simple Workflow Service Flow config" )
+          <> help    "AWS SWF Service Flow config" )
       <*> strOption
           ( long     "queue"
           <> short   'q'
           <> metavar "NAME"
-          <> help    "AWS Simple Workflow Service Flow queue" )
+          <> help    "AWS SWF Service Flow queue" )
       <*> strOption
           (  long    "container"
           <> short   'x'
           <> metavar "FILE"
-          <> help    "AWS Simple Workflow Service Flow worker container" ) where
-        args domain config queue container = Args
+          <> help    "AWS SWF Service Flow worker container" )
+      <*> strOption
+          (  long    "bucket"
+          <> short   'b'
+          <> metavar "NAME"
+          <> help    "AWS S3 Service bucket" ) where
+        args domain config queue container pail = Args
           { aDomain    = pack domain
           , aConfig    = config
           , aQueue     = pack queue
           , aContainer = container
+          , aPail      = pack pail
           }
 
-exec :: MonadIO m => Container -> Metadata -> m Metadata
-exec container metadata =
+exec :: MonadIO m => Container -> Pail -> Metadata -> m Metadata
+exec container pail metadata =
   shelly $ withDir $ \dataDir storeDir -> do
     input dataDir metadata
     docker dataDir container
@@ -106,8 +113,11 @@ exec container metadata =
               concatMap (("--volume" :) . return) $
                 append (toTextIgnore dir) ":/app/data" : cVolumes
       store dir = do
-        artifacts <- findWhen test_f dir
         return ()
+        -- artifacts <- findWhen test_f dir
+        -- forM_ artifacts $ \artifact -> do
+        --   key <- relativeTo dir artifact
+        --   putter pail (toTextIgnore key) (unpack $ toTextIgnore artifact)
 
 main :: IO ()
 main =
@@ -119,7 +129,7 @@ main =
       forever $ do
         uid <- newUid
         r <- runFlowT env $
-          act aDomain uid aQueue (exec container)
+          act aDomain uid aQueue (exec container aPail)
         print r where
           hoistMaybe s =
             maybe (error s) return
