@@ -72,7 +72,7 @@ exec :: MonadIO m => Container -> Metadata -> m (Metadata, [Artifact])
 exec container metadata =
   shelly $ withDir $ \dataDir storeDir -> do
     input dataDir metadata
-    docker dataDir container
+    docker dataDir storeDir container
     result <- output dataDir
     artifacts <- store storeDir
     return (result, artifacts) where
@@ -99,7 +99,7 @@ exec container metadata =
                  , fromIntegral $ length blob
                  , fromStrict blob
                  )
-      docker dir Container{..} =
+      docker dataDir storeDir Container{..} =
         run_ "docker" $ concat
           [["run"]
           , devices
@@ -111,7 +111,8 @@ exec container metadata =
               concatMap (("--device" :) . return) cDevices
             volumes =
               concatMap (("--volume" :) . return) $
-                append (toTextIgnore dir) ":/app/data" : cVolumes
+                append (toTextIgnore dataDir)  ":/app/data"  :
+                append (toTextIgnore storeDir) ":/app/store" : cVolumes
 
 main :: IO ()
 main =

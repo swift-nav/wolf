@@ -5,3 +5,5 @@
     secret-key-env-var: AWS_SECRET_ACCESS_KEY
   timeout: 5000000
   poll-timeout: 70000000
+  domain: logd-domain
+  bucket: mfine-artifacts
