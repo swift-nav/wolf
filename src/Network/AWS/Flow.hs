@@ -63,19 +63,19 @@ register Plan{..} = do
     go rs Sleep{..} = return rs
 
 execute :: MonadFlow m => Uid -> Task -> Metadata -> m ()
-execute uid Task{..} =
-  startWorkflowExecutionAction uid tskName tskVersion tskQueue
+execute guid Task{..} =
+  startWorkflowExecutionAction guid tskName tskVersion tskQueue
 
-act :: MonadFlow m => Uid -> Queue -> (Metadata -> m (Metadata, [Artifact])) -> m ()
-act uid queue action = do
-  (taskToken, input) <- pollForActivityTaskAction uid queue
-  (output, artifacts) <- action input
+act :: MonadFlow m => Queue -> (Uid -> Metadata -> m (Metadata, [Artifact])) -> m ()
+act queue action = do
+  (token, guid, input) <- pollForActivityTaskAction queue
+  (output, artifacts) <- action guid input
   forM_ artifacts $ putObjectAction
-  respondActivityTaskCompletedAction taskToken output
+  respondActivityTaskCompletedAction token output
 
 decide :: MonadFlow m => Uid -> Plan -> m ()
 decide uid plan@Plan{..} = do
-   (token', events) <- pollForDecisionTaskAction uid (tskQueue $ strtTask plnStart)
+   (token', events) <- pollForDecisionTaskAction (tskQueue $ strtTask plnStart)
    token <- maybeToFlowError "No Token" token'
    logger <- asks feLogger
    decisions <- runDecide logger uid plan events select

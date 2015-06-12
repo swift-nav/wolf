@@ -65,14 +65,14 @@ startWorkflowExecutionAction uid name version queue input = do
       swe1TaskList .~ Just (taskList queue) &
       swe1Input .~ input
 
-pollForActivityTaskAction :: MonadFlow m => Uid -> Queue -> m (Token, Metadata)
-pollForActivityTaskAction uid queue = do
+pollForActivityTaskAction :: MonadFlow m => Queue -> m (Token, Uid, Metadata)
+pollForActivityTaskAction queue = do
   domain <- asks feDomain
   runAWS fePollEnv $ do
-    r <- send $ pollForActivityTask domain (taskList queue) &
-      pfatIdentity .~ Just uid
+    r <- send $ pollForActivityTask domain (taskList queue)
     return
       ( r ^. pfatrTaskToken
+      , r ^. pfatrWorkflowExecution ^. weWorkflowId
       , r ^. pfatrInput )
 
 respondActivityTaskCompletedAction :: MonadFlow m => Token -> Metadata -> m ()
@@ -86,13 +86,11 @@ respondActivityTaskFailedAction token =
   runAWS feEnv $
     send_ $ respondActivityTaskFailed token
 
-pollForDecisionTaskAction :: MonadFlow m
-                          => Uid -> Queue -> m (Maybe Token, [HistoryEvent])
-pollForDecisionTaskAction uid queue = do
+pollForDecisionTaskAction :: MonadFlow m => Queue -> m (Maybe Token, [HistoryEvent])
+pollForDecisionTaskAction queue = do
   domain <- asks feDomain
   runAWS fePollEnv $ do
     rs <- paginate (pollForDecisionTask domain (taskList queue) &
-      pfdtIdentity .~ Just uid &
       pfdtReverseOrder .~ Just True &
       pfdtMaximumPageSize .~ Just 100)
         $$ consume
