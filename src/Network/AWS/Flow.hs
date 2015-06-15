@@ -63,13 +63,13 @@ register Plan{..} = do
     go rs Sleep{..} = return rs
 
 execute :: MonadFlow m => Uid -> Task -> Metadata -> m ()
-execute guid Task{..} =
-  startWorkflowExecutionAction guid tskName tskVersion tskQueue
+execute uid Task{..} =
+  startWorkflowExecutionAction uid tskName tskVersion tskQueue
 
-act :: MonadFlow m => Queue -> (Uid -> Metadata -> m (Metadata, [Artifact])) -> m ()
+act :: MonadFlow m => Queue -> (Metadata -> m (Metadata, [Artifact])) -> m ()
 act queue action = do
-  (token, guid, input) <- pollForActivityTaskAction queue
-  (output, artifacts) <- action guid input
+  (token, input) <- pollForActivityTaskAction queue
+  (output, artifacts) <- action input
   forM_ artifacts $ putObjectAction
   respondActivityTaskCompletedAction token output
 

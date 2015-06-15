@@ -13,7 +13,7 @@ import Data.ByteString.Lazy       ( fromStrict )
 import Data.Text                  ( Text, pack, append, words )
 import Data.Yaml
 import Network.AWS.Flow           ( Artifact, Metadata, Queue, Uid, runFlowT, act )
-import Network.AWS.Flow.Helper    ( flowEnv )
+import Network.AWS.Flow.Helper    ( flowEnv, newUid )
 import Options.Applicative hiding ( action )
 import Shelly              hiding ( FilePath )
 import Prelude             hiding ( length, readFile, words, writeFile )
@@ -69,7 +69,7 @@ argsPI =
           }
 
 exec :: MonadIO m => Container -> Uid -> Metadata -> m (Metadata, [Artifact])
-exec container guid metadata =
+exec container uid metadata =
   shelly $ withDir $ \dataDir storeDir -> do
     input dataDir metadata
     docker dataDir storeDir container
@@ -94,7 +94,7 @@ exec container guid metadata =
         forM artifacts $ \artifact -> do
           key <- relativeTo dir artifact
           blob <- readBinary artifact
-          return ( toTextIgnore $ guid </> key
+          return ( toTextIgnore $ uid </> key
                  , hash blob
                  , fromIntegral $ length blob
                  , fromStrict blob
@@ -122,8 +122,9 @@ main =
       container <- decodeFile aContainer >>= hoistMaybe "Bad Container"
       env <- flowEnv config
       forever $ do
+        uid <- newUid
         r <- runFlowT env $
-          act aQueue $ exec container
+          act aQueue $ exec container uid
         print r where
           hoistMaybe s =
             maybe (error s) return

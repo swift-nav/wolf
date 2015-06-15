@@ -65,14 +65,13 @@ startWorkflowExecutionAction uid name version queue input = do
       swe1TaskList .~ Just (taskList queue) &
       swe1Input .~ input
 
-pollForActivityTaskAction :: MonadFlow m => Queue -> m (Token, Uid, Metadata)
+pollForActivityTaskAction :: MonadFlow m => Queue -> m (Token, Metadata)
 pollForActivityTaskAction queue = do
   domain <- asks feDomain
   runAWS fePollEnv $ do
     r <- send $ pollForActivityTask domain (taskList queue)
     return
       ( r ^. pfatrTaskToken
-      , r ^. pfatrWorkflowExecution ^. weWorkflowId
       , r ^. pfatrInput )
 
 respondActivityTaskCompletedAction :: MonadFlow m => Token -> Metadata -> m ()
