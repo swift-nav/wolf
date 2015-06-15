@@ -71,7 +71,6 @@ type MonadFlow m =
 
 data DecideEnv = DecideEnv
   { deLogger    :: LogStr -> IO ()
-  , deUid       :: Uid
   , dePlan      :: Plan
   , deEvents    :: [HistoryEvent]
   , deFindEvent :: Integer -> Maybe HistoryEvent

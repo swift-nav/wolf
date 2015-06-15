@@ -13,6 +13,7 @@ module Network.AWS.Flow.Internal
   , throwStringError
   , hoistStringEither
   , maybeToFlowError
+  , newUid
   ) where
 
 import Control.Applicative         ( (<$>), (<*>) )
@@ -20,7 +21,7 @@ import Control.Lens                ( (^.) )
 import Control.Monad               ( msum, mzero )
 import Control.Monad.Base          ( MonadBase, liftBase, liftBaseDefault )
 import Control.Monad.Except        ( MonadError, ExceptT, runExceptT, throwError )
-import Control.Monad.IO.Class      ( MonadIO )
+import Control.Monad.IO.Class      ( MonadIO, liftIO )
 import Control.Monad.Logger        ( LogStr, runLoggingT )
 import Control.Monad.Reader        ( MonadReader, ReaderT, ask, asks, local, runReaderT )
 import Control.Monad.Trans.AWS     ( AWST, Env, Error, runAWST )
@@ -38,6 +39,9 @@ import Control.Monad.Trans.Control ( MonadBaseControl
                                    , restoreT )
 import Data.Aeson                  ( FromJSON, Value(..), parseJSON, (.:) )
 import Data.HashMap.Strict         ( fromList, lookup )
+import Data.Text                   ( pack )
+import Data.UUID                   ( toString )
+import Data.UUID.V4                ( nextRandom )
 import Network.AWS.SWF
 import Network.AWS.Flow.Types
 import Prelude              hiding ( lookup )
@@ -180,11 +184,11 @@ hoistStringEither :: MonadError FlowError m => Either String a -> m a
 hoistStringEither = either throwStringError return
 
 runDecide :: (MonadError FlowError m, MonadIO m)
-          => (LogStr -> IO ()) -> Uid -> Plan -> [HistoryEvent] -> DecideT m a -> m a
-runDecide logger uid plan events action =
+          => (LogStr -> IO ()) -> Plan -> [HistoryEvent] -> DecideT m a -> m a
+runDecide logger plan events action =
   runDecideT env action >>= hoistFlowEither
   where
-    env = DecideEnv logger uid plan events findEvent where
+    env = DecideEnv logger plan events findEvent where
       findEvent =
         flip lookup $ fromList $ flip map events $ \e ->
           (e ^. heEventId, e)
@@ -195,3 +199,9 @@ maybeToEither e = maybe (Left e) Right
 
 maybeToFlowError :: MonadError FlowError m => String -> Maybe a -> m a
 maybeToFlowError e = hoistStringEither . maybeToEither e
+
+newUid :: MonadIO m => m Uid
+newUid =
+  liftIO $ do
+    r <- nextRandom
+    return $ pack $ toString r

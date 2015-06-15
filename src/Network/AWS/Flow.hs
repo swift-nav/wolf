@@ -62,23 +62,24 @@ register Plan{..} = do
       return (r : rs)
     go rs Sleep{..} = return rs
 
-execute :: MonadFlow m => Uid -> Task -> Metadata -> m ()
-execute uid Task{..} =
-  startWorkflowExecutionAction uid tskName tskVersion tskQueue
+execute :: MonadFlow m => Task -> Metadata -> m ()
+execute Task{..} input = do
+  uid <- newUid
+  startWorkflowExecutionAction uid tskName tskVersion tskQueue input
 
-act :: MonadFlow m => Queue -> (Metadata -> m (Metadata, [Artifact])) -> m ()
+act :: MonadFlow m => Queue -> (Uid -> Metadata -> m (Metadata, [Artifact])) -> m ()
 act queue action = do
-  (token, input) <- pollForActivityTaskAction queue
-  (output, artifacts) <- action input
+  (token, uid, input) <- pollForActivityTaskAction queue
+  (output, artifacts) <- action uid input
   forM_ artifacts $ putObjectAction
   respondActivityTaskCompletedAction token output
 
-decide :: MonadFlow m => Uid -> Plan -> m ()
-decide uid plan@Plan{..} = do
+decide :: MonadFlow m => Plan -> m ()
+decide plan@Plan{..} = do
    (token', events) <- pollForDecisionTaskAction (tskQueue $ strtTask plnStart)
    token <- maybeToFlowError "No Token" token'
    logger <- asks feLogger
-   decisions <- runDecide logger uid plan events select
+   decisions <- runDecide logger plan events select
    respondDecisionTaskCompletedAction token decisions
 
 -- Helpers
@@ -166,7 +167,7 @@ schedule input = maybe (scheduleEnd input) (scheduleSpec input)
 
 scheduleSpec :: MonadDecide m => Metadata -> Spec -> m [Decision]
 scheduleSpec input spec = do
-  uid <- asks deUid
+  uid <- newUid
   case spec of
     Work{..} ->
       return [scheduleActivityTaskDecision uid
@@ -192,8 +193,10 @@ scheduleContinue = do
   input <- maybeToFlowError "No Continue Start Information" $ do
     attrs <- event ^. heWorkflowExecutionStartedEventAttributes
     return $ attrs ^. weseaInput
+  uid <- newUid
   task <- asks (strtTask . plnStart . dePlan)
-  return [continueAsNewWorkflowExecutionDecision
+  return [startChildWorkflowExecutionDecision uid
+           (tskName task)
            (tskVersion task)
            (tskQueue task)
            input]

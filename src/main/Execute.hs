@@ -5,7 +5,7 @@ module Execute ( main ) where
 import Data.Text.IO            ( readFile )
 import Data.Yaml               ( decodeFile )
 import Network.AWS.Flow        ( Plan (..), Start (..), runFlowT, execute )
-import Network.AWS.Flow.Helper ( flowEnv, newUid )
+import Network.AWS.Flow.Helper ( flowEnv )
 import Options.Applicative
 import Prelude          hiding ( readFile )
 
@@ -51,9 +51,8 @@ main =
       plan <- decodeFile aPlan >>= hoistMaybe "Bad Plan"
       input <- readFile aInput
       env <- flowEnv config
-      uid <- newUid
       r <- runFlowT env $
-        execute uid (strtTask $ plnStart plan) (Just input)
+        execute (strtTask $ plnStart plan) (Just input)
       print r where
         hoistMaybe s =
           maybe (error s) return

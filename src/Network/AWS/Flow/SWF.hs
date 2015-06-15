@@ -16,6 +16,7 @@ module Network.AWS.Flow.SWF
   , completeWorkflowExecutionDecision
   , startTimerDecision
   , continueAsNewWorkflowExecutionDecision
+  , startChildWorkflowExecutionDecision
   ) where
 
 import Control.Lens              ( (^.), (.~), (&) )
@@ -52,7 +53,7 @@ registerWorkflowTypeAction name version timeout = do
   domain <- asks feDomain
   runAWS feEnv $
     send_ $ registerWorkflowType domain name version &
-      rwtDefaultChildPolicy .~ Just Terminate &
+      rwtDefaultChildPolicy .~ Just Abandon &
       rwtDefaultExecutionStartToCloseTimeout .~ Just timeout &
       rwtDefaultTaskStartToCloseTimeout .~ Just "60"
 
@@ -65,13 +66,14 @@ startWorkflowExecutionAction uid name version queue input = do
       swe1TaskList .~ Just (taskList queue) &
       swe1Input .~ input
 
-pollForActivityTaskAction :: MonadFlow m => Queue -> m (Token, Metadata)
+pollForActivityTaskAction :: MonadFlow m => Queue -> m (Token, Uid, Metadata)
 pollForActivityTaskAction queue = do
   domain <- asks feDomain
   runAWS fePollEnv $ do
     r <- send $ pollForActivityTask domain (taskList queue)
     return
       ( r ^. pfatrTaskToken
+      , r ^. pfatrWorkflowExecution ^. weWorkflowId
       , r ^. pfatrInput )
 
 respondActivityTaskCompletedAction :: MonadFlow m => Token -> Metadata -> m ()
@@ -135,3 +137,11 @@ continueAsNewWorkflowExecutionDecision version queue input =
         canwedaWorkflowTypeVersion .~ Just version &
         canwedaTaskList .~ Just (taskList queue) &
         canwedaInput .~ input
+
+startChildWorkflowExecutionDecision :: Uid -> Name -> Version -> Queue -> Metadata -> Decision
+startChildWorkflowExecutionDecision uid name version queue input =
+  decision StartChildWorkflowExecution &
+    dStartChildWorkflowExecutionDecisionAttributes .~ Just attrs where
+      attrs = startChildWorkflowExecutionDecisionAttributes (workflowType name version) uid &
+        scwedaTaskList .~ Just (taskList queue) &
+        scwedaInput .~ input

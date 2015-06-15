@@ -13,7 +13,7 @@ import Data.ByteString.Lazy       ( fromStrict )
 import Data.Text                  ( Text, pack, append, words )
 import Data.Yaml
 import Network.AWS.Flow           ( Artifact, Metadata, Queue, Uid, runFlowT, act )
-import Network.AWS.Flow.Helper    ( flowEnv, newUid )
+import Network.AWS.Flow.Helper    ( flowEnv )
 import Options.Applicative hiding ( action )
 import Shelly              hiding ( FilePath )
 import Prelude             hiding ( length, readFile, words, writeFile )
@@ -122,9 +122,8 @@ main =
       container <- decodeFile aContainer >>= hoistMaybe "Bad Container"
       env <- flowEnv config
       forever $ do
-        uid <- newUid
         r <- runFlowT env $
-          act aQueue $ exec container uid
+          act aQueue $ exec container
         print r where
           hoistMaybe s =
             maybe (error s) return

@@ -5,7 +5,6 @@
 
 module Network.AWS.Flow.Helper
   ( flowEnv
-  , newUid
   , FlowConfig (..)
   ) where
 
@@ -15,9 +14,6 @@ import Control.Monad           ( mzero )
 import Control.Monad.Except    ( runExceptT )
 import Control.Monad.Trans.AWS
 import Data.Aeson
-import Data.Text               ( Text, pack )
-import Data.UUID               ( toString )
-import Data.UUID.V4            ( nextRandom )
 import Network.AWS.Flow
 import Network.HTTP.Conduit    ( conduitManagerSettings
                                , managerResponseTimeout
@@ -78,8 +74,3 @@ flowEnv FlowConfig{..} = do
       runExceptT (newEnv fcRegion fcCredentials m) >>= either error return
     logStrLn ls s =
       pushLogStr ls s >> flushLogStr ls
-
-newUid :: IO Text
-newUid = do
-  r <- nextRandom
-  return $ pack $ toString r

@@ -5,7 +5,7 @@ module Decide ( main ) where
 import Control.Monad           ( forever )
 import Data.Yaml               ( decodeFile )
 import Network.AWS.Flow        ( runFlowT, decide )
-import Network.AWS.Flow.Helper ( flowEnv, newUid )
+import Network.AWS.Flow.Helper ( flowEnv )
 import Options.Applicative
 import Prelude          hiding ( readFile )
 
@@ -44,9 +44,8 @@ main =
       plan <- decodeFile aPlan >>= hoistMaybe "Bad Plan"
       env <- flowEnv config
       forever $ do
-        uid <- newUid
         r <- runFlowT env $
-          decide uid plan
+          decide plan
         print r where
           hoistMaybe s =
             maybe (error s) return
