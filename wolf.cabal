@@ -1,7 +1,7 @@
-name:                flow
+name:                wolf
 version:             0.1.0
 synopsis:            Amazon Simple Workflow Service Wrapper.
-homepage:            https://github.com/swift-nav/flow
+homepage:            https://github.com/swift-nav/wolf
 license:             MIT
 license-file:        LICENSE
 author:              Swift Navigation Inc.
@@ -13,11 +13,11 @@ extra-source-files:  README.md
 cabal-version:       >= 1.10
 
 description:
-  Flow is a wrapper around Amazon Simple Workflow Service.
+  Wolf is a wrapper around Amazon Simple Workflow Service.
 
 source-repository head
   type:              git
-  location:          git@github.com:swift-nav/flow.git
+  location:          git@github.com:swift-nav/wolf.git
 
 library
   exposed-modules:     Network.AWS.Flow
@@ -54,46 +54,46 @@ library
                      , uuid >= 1.3.10
                      , yaml >= 0.8.11
 
-executable flow-register
+executable wolf-register
   default-language:    Haskell2010
   main-is:             Register.hs
   hs-source-dirs:      src/main
   ghc-options:         -Wall -fno-warn-orphans -main-is Register
   build-depends:       base >= 4.7 && < 4.8
-                     , flow
+                     , wolf
                      , optparse-applicative >= 0.11.0
                      , text >= 1.2.0
                      , yaml >= 0.8.0
 
-executable flow-execute
+executable wolf-execute
   default-language:    Haskell2010
   main-is:             Execute.hs
   hs-source-dirs:      src/main
   ghc-options:         -Wall -fno-warn-orphans -main-is Execute
   build-depends:       base >= 4.7 && < 4.8
-                     , flow
+                     , wolf
                      , optparse-applicative >= 0.11.0
                      , text >= 1.2.0
                      , yaml >= 0.8.0
 
-executable flow-decide
+executable wolf-decide
   default-language:    Haskell2010
   main-is:             Decide.hs
   hs-source-dirs:      src/main
   ghc-options:         -Wall -fno-warn-orphans -main-is Decide
   build-depends:       base >= 4.7 && < 4.8
-                     , flow
+                     , wolf
                      , optparse-applicative >= 0.11.0
                      , text >= 1.2.0
                      , yaml >= 0.8.0
 
-executable flow-act
+executable wolf-act
   default-language:    Haskell2010
   main-is:             Act.hs
   hs-source-dirs:      src/main
   ghc-options:         -Wall -fno-warn-orphans -main-is Act
   build-depends:       base >= 4.7 && < 4.8
-                     , flow
+                     , wolf
                      , bytestring >= 0.10.4
                      , cryptohash >= 0.11.6
                      , optparse-applicative >= 0.11.0

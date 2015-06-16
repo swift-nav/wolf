@@ -1,3 +1,3 @@
-# Flow
+# Wolf
 
-Flow is a wrapper around Amazon Simple Workflow Service.
+Wolf is a wrapper around Amazon Simple Workflow Service.
