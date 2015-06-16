@@ -2,9 +2,9 @@
 
 module Register ( main ) where
 
-import Data.Yaml               ( decodeFile )
-import Network.AWS.Flow        ( runFlowT, register )
-import Network.AWS.Flow.Helper ( flowEnv )
+import Data.Yaml            ( decodeFile )
+import Network.AWS.Flow     ( runFlowT, register )
+import Network.AWS.Flow.Env ( flowEnv )
 import Options.Applicative
 
 data Args = Args

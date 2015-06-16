@@ -2,12 +2,12 @@
 
 module Execute ( main ) where
 
-import Data.Text.IO            ( readFile )
-import Data.Yaml               ( decodeFile )
-import Network.AWS.Flow        ( Plan (..), Start (..), runFlowT, execute )
-import Network.AWS.Flow.Helper ( flowEnv )
+import Data.Text.IO         ( readFile )
+import Data.Yaml            ( decodeFile )
+import Network.AWS.Flow     ( Plan (..), Start (..), runFlowT, execute )
+import Network.AWS.Flow.Env ( flowEnv )
 import Options.Applicative
-import Prelude          hiding ( readFile )
+import Prelude       hiding ( readFile )
 
 data Args = Args
   { aConfig :: FilePath

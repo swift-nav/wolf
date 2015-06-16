@@ -21,7 +21,7 @@ source-repository head
 
 library
   exposed-modules:     Network.AWS.Flow
-                     , Network.AWS.Flow.Helper
+                     , Network.AWS.Flow.Env
   other-modules:       Network.AWS.Flow.Internal
                      , Network.AWS.Flow.S3
                      , Network.AWS.Flow.SWF

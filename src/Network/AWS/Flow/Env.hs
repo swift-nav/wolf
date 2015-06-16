@@ -3,9 +3,8 @@
 {-# LANGUAGE ConstraintKinds   #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Network.AWS.Flow.Helper
+module Network.AWS.Flow.Env
   ( flowEnv
-  , FlowConfig (..)
   ) where
 
 import Control.Applicative     ( (<$>), (<*>) )

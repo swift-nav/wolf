@@ -2,12 +2,12 @@
 
 module Decide ( main ) where
 
-import Control.Monad           ( forever )
-import Data.Yaml               ( decodeFile )
-import Network.AWS.Flow        ( runFlowT, decide )
-import Network.AWS.Flow.Helper ( flowEnv )
+import Control.Monad        ( forever )
+import Data.Yaml            ( decodeFile )
+import Network.AWS.Flow     ( runFlowT, decide )
+import Network.AWS.Flow.Env ( flowEnv )
 import Options.Applicative
-import Prelude          hiding ( readFile )
+import Prelude       hiding ( readFile )
 
 data Args = Args
   { aConfig :: FilePath
