@@ -187,7 +187,7 @@ scheduleEnd input = do
     Stop -> return [completeWorkflowExecutionDecision input]
     Continue -> do
       d <- scheduleContinue
-      return (completeWorkflowExecutionDecision input : d)
+      return (d ++ [completeWorkflowExecutionDecision input])
 
 scheduleContinue :: MonadDecide m => m [Decision]
 scheduleContinue = do
