@@ -13,3 +13,4 @@ Wolf is a wrapper around Amazon Simple Workflow Service.
 [5]: https://travis-ci.org/swift-nav/wolf
 [6]: https://img.shields.io/hackage-deps/v/wolf.svg?style=flat
 [7]: http://packdeps.haskellers.com/feed?needle=wolf
+
