@@ -106,12 +106,16 @@ sleepNext name = do
 
 select :: MonadDecide m => m [Decision]
 select = do
-  event <- nextEvent [WorkflowExecutionStarted, ActivityTaskCompleted, TimerFired]
+  event <- nextEvent [ WorkflowExecutionStarted
+                     , ActivityTaskCompleted
+                     , TimerFired
+                     , StartChildWorkflowExecutionInitiated ]
   case event ^. heEventType of
-    WorkflowExecutionStarted -> start event
-    ActivityTaskCompleted    -> completed event
-    TimerFired               -> timer event
-    _                        -> throwStringError "Unknown Select Event"
+    WorkflowExecutionStarted             -> start event
+    ActivityTaskCompleted                -> completed event
+    TimerFired                           -> timer event
+    StartChildWorkflowExecutionInitiated -> child
+    _                                    -> throwStringError "Unknown Select Event"
 
 start :: MonadDecide m => HistoryEvent -> m [Decision]
 start event = do
@@ -185,9 +189,7 @@ scheduleEnd input = do
   end <- asks (plnEnd . dePlan)
   case end of
     Stop -> return [completeWorkflowExecutionDecision input]
-    Continue -> do
-      d <- scheduleContinue
-      return (d ++ [completeWorkflowExecutionDecision input])
+    Continue -> scheduleContinue
 
 scheduleContinue :: MonadDecide m => m [Decision]
 scheduleContinue = do
@@ -202,3 +204,26 @@ scheduleContinue = do
            (tskVersion task)
            (tskQueue task)
            input]
+
+child :: MonadDecide m => m [Decision]
+child = do
+  event <- nextEvent [WorkflowExecutionStarted, ActivityTaskCompleted]
+  case event ^. heEventType of
+    WorkflowExecutionStarted -> childStart event
+    ActivityTaskCompleted    -> childCompleted event
+    _                        -> throwStringError "Unknown Child Event"
+
+childStart :: MonadDecide m => HistoryEvent -> m [Decision]
+childStart event = do
+  input <- maybeToFlowError "No Child Start Information" $ do
+    attrs <- event ^. heWorkflowExecutionStartedEventAttributes
+    return $ attrs ^. weseaInput
+  return [completeWorkflowExecutionDecision input]
+
+childCompleted :: MonadDecide m => HistoryEvent -> m [Decision]
+childCompleted event = do
+  input <- maybeToFlowError "No Child Completed Information" $ do
+    attrs <- event ^. heActivityTaskCompletedEventAttributes
+    return $ attrs ^. atceaResult
+  return [completeWorkflowExecutionDecision input]
+
