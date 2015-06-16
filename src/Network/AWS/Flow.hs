@@ -71,7 +71,7 @@ act :: MonadFlow m => Queue -> (Uid -> Metadata -> m (Metadata, [Artifact])) -> 
 act queue action = do
   (token, uid, input) <- pollForActivityTaskAction queue
   (output, artifacts) <- action uid input
-  forM_ artifacts $ putObjectAction
+  forM_ artifacts putObjectAction
   respondActivityTaskCompletedAction token output
 
 decide :: MonadFlow m => Plan -> m ()
@@ -185,7 +185,9 @@ scheduleEnd input = do
   end <- asks (plnEnd . dePlan)
   case end of
     Stop -> return [completeWorkflowExecutionDecision input]
-    Continue -> scheduleContinue
+    Continue -> do
+      d <- scheduleContinue
+      return (completeWorkflowExecutionDecision input : d)
 
 scheduleContinue :: MonadDecide m => m [Decision]
 scheduleContinue = do
