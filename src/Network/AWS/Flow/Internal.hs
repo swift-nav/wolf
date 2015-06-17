@@ -13,7 +13,6 @@ module Network.AWS.Flow.Internal
   , throwStringError
   , hoistStringEither
   , maybeToFlowError
-  , trace
   , newUid
   ) where
 
@@ -23,7 +22,7 @@ import Control.Monad               ( msum, mzero )
 import Control.Monad.Base          ( MonadBase, liftBase, liftBaseDefault )
 import Control.Monad.Except        ( MonadError, ExceptT, runExceptT, throwError )
 import Control.Monad.IO.Class      ( MonadIO, liftIO )
-import Control.Monad.Logger        ( MonadLogger, LogStr, runLoggingT, logInfoN )
+import Control.Monad.Logger        ( LogStr, runLoggingT )
 import Control.Monad.Reader        ( MonadReader, ReaderT, ask, asks, local, runReaderT )
 import Control.Monad.Trans.AWS     ( AWST, Env, Error, runAWST )
 import Control.Monad.Trans.Class   ( MonadTrans, lift )
@@ -200,10 +199,6 @@ maybeToEither e = maybe (Left e) Right
 
 maybeToFlowError :: MonadError FlowError m => String -> Maybe a -> m a
 maybeToFlowError e = hoistStringEither . maybeToEither e
-
-trace :: MonadLogger m => String -> m ()
-trace =
-  logInfoN . pack
 
 newUid :: MonadIO m => m Uid
 newUid =
