@@ -43,11 +43,14 @@ import Network.AWS.Flow.S3
 import Network.AWS.Flow.SWF
 import Network.AWS.Flow.Types
 import Safe                      ( headMay, tailMay )
+import Text.Printf               ( printf )
+import Data.Text                 ( unpack )
 
 -- Interface
 
 register :: MonadFlow m => Plan -> m [()]
 register Plan{..} = do
+  trace "event=register\n"
   r <- registerDomainAction
   s <- registerWorkflowTypeAction
          (tskName $ strtTask plnStart)
@@ -65,12 +68,15 @@ register Plan{..} = do
 execute :: MonadFlow m => Task -> Metadata -> m ()
 execute Task{..} input = do
   uid <- newUid
+  trace $ printf "event=execute uid=%s\n" (unpack uid)
   startWorkflowExecutionAction uid tskName tskVersion tskQueue input
 
 act :: MonadFlow m => Queue -> (Uid -> Metadata -> m (Metadata, [Artifact])) -> m ()
 act queue action = do
   (token, uid, input) <- pollForActivityTaskAction queue
+  trace $ printf "event=poll-activity token=%s uid=%s" (unpack token) (unpack uid)
   (output, artifacts) <- action uid input
+  trace $ printf "event=activity-complete token=%s uid=%s" (unpack token) (unpack uid)
   forM_ artifacts putObjectAction
   respondActivityTaskCompletedAction token output
 
