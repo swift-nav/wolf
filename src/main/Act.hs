@@ -19,19 +19,21 @@ import Shelly              hiding ( FilePath )
 import Prelude             hiding ( length, readFile, words, writeFile )
 
 data Container = Container
-  { cImage   :: Text
-  , cCommand :: Text
-  , cVolumes :: [Text]
-  , cDevices :: [Text]
+  { cImage       :: Text
+  , cCommand     :: Text
+  , cVolumes     :: [Text]
+  , cDevices     :: [Text]
+  , cEnvironment :: [Text]
   } deriving ( Eq, Read, Show )
 
 instance FromJSON Container where
   parseJSON (Object v) =
-    Container              <$>
-    v .:  "image"          <*>
-    v .:  "command"        <*>
-    v .:? "volumes" .!= [] <*>
-    v .:? "devices" .!= []
+    Container                  <$>
+    v .:  "image"              <*>
+    v .:  "command"            <*>
+    v .:? "volumes"     .!= [] <*>
+    v .:? "devices"     .!= [] <*>
+    v .:? "environment" .!= []
   parseJSON _ = mzero
 
 data Args = Args
@@ -104,6 +106,7 @@ exec container uid metadata =
           [["run"]
           , devices
           , volumes
+          , environment
           , [cImage]
           , words cCommand
           ] where
@@ -113,6 +116,8 @@ exec container uid metadata =
               concatMap (("--volume" :) . return) $
                 append (toTextIgnore dataDir)  ":/app/data"  :
                 append (toTextIgnore storeDir) ":/app/store" : cVolumes
+            environment =
+              concatMap (("--environment" :) . return) cEnvironment
 
 main :: IO ()
 main =
