@@ -1,4 +1,4 @@
-FROM mfine/haskell:7.8
+FROM haskell:7.8
 
 WORKDIR /app
 
