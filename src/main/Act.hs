@@ -117,7 +117,7 @@ exec container uid metadata =
                 append (toTextIgnore dataDir)  ":/app/data"  :
                 append (toTextIgnore storeDir) ":/app/store" : cVolumes
             environment =
-              concatMap (("--environment" :) . return) cEnvironment
+              concatMap (("--env" :) . return) cEnvironment
 
 main :: IO ()
 main =
