@@ -12,7 +12,7 @@ import Prelude       hiding ( readFile )
 data Args = Args
   { aConfig :: FilePath
   , aPlan   :: FilePath
-  , aInput  :: FilePath
+  , aInput  :: Maybe FilePath
   } deriving ( Eq, Read, Show )
 
 argsPI :: ParserInfo Args
@@ -32,11 +32,11 @@ argsPI =
           <> short   'p'
           <> metavar "FILE"
           <> help    "AWS SWF Service Flow plan" )
-      <*> strOption
+      <*> optional ( strOption
           ( long     "input"
           <> short   'i'
           <> metavar "FILE"
-          <> help    "AWS SWF Service Flow input" ) where
+          <> help    "AWS SWF Service Flow input" ) ) where
           args config plan input = Args
             { aConfig = config
             , aPlan   = plan
@@ -49,10 +49,12 @@ main =
     call Args{..} = do
       config <- decodeFile aConfig >>= hoistMaybe "Bad Config"
       plan <- decodeFile aPlan >>= hoistMaybe "Bad Plan"
-      input <- readFile aInput
+      input <- readFileMaybe aInput
       env <- flowEnv config
       r <- runFlowT env $
-        execute (strtTask $ plnStart plan) (Just input)
+        execute (strtTask $ plnStart plan) input
       print r where
+        readFileMaybe =
+          maybe (return Nothing) ((>>= return . Just) . readFile)
         hoistMaybe s =
           maybe (error s) return
