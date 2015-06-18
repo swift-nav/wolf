@@ -90,7 +90,7 @@ decide plan@Plan{..} = do
   (token', events) <- pollForDecisionTaskAction (tskQueue $ strtTask plnStart)
   token <- maybeToFlowError "No Token" token'
   logger <- asks feLogger
-  logInfoN $ "event=decide-select\n"
+  logInfoN "event=decide-select\n"
   decisions <- runDecide logger plan events select
   respondDecisionTaskCompletedAction token decisions
 
