@@ -71,14 +71,19 @@ argsPI =
           , aContainer = container
           }
 
-deref :: MonadIO m => Text -> m Text
-deref device =
+deref' :: MonadIO m => Text -> m Text
+deref' device =
   liftIO $ do
     status <- getFileStatus (unpack device)
     if isSymbolicLink status then
       readSymbolicLink (unpack device) >>= return . pack
     else
       return device
+
+deref :: MonadIO m => Text -> m Text
+deref device =
+  liftIO $
+    readSymbolicLink (unpack device) >>= return . pack
 
 exec :: MonadIO m => Container -> Uid -> Metadata -> m (Metadata, [Artifact])
 exec container uid metadata =
