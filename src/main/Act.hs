@@ -10,7 +10,7 @@ import Control.Monad.IO.Class     ( MonadIO )
 import Crypto.Hash                ( hash )
 import Data.ByteString            ( length )
 import Data.ByteString.Lazy       ( fromStrict )
-import Data.Text                  ( Text, pack, append, words )
+import Data.Text                  ( Text, pack, append, words, strip )
 import Data.Yaml
 import Network.AWS.Flow           ( Artifact, Metadata, Queue, Uid, runFlowT, act )
 import Network.AWS.Flow.Env       ( flowEnv )
@@ -101,17 +101,20 @@ exec container uid metadata =
                  , fromIntegral $ length blob
                  , fromStrict blob
                  )
-      docker dataDir storeDir Container{..} =
+      docker dataDir storeDir Container{..} = do
+        derefs <- forM cDevices $ \device -> do
+          d <- run "readlink" ["-f", device]
+          return (strip d)
         run_ "docker" $ concat
           [["run"]
-          , devices
+          , devices derefs
           , volumes
           , environment
           , [cImage]
           , words cCommand
           ] where
-            devices =
-              concatMap (("--device" :) . return) cDevices
+            devices derefs =
+              concatMap (("--device" :) . return) derefs
             volumes =
               concatMap (("--volume" :) . return) $
                 append (toTextIgnore dataDir)  ":/app/data"  :
