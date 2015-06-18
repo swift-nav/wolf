@@ -121,6 +121,9 @@ exec container uid metadata =
         j <- lsT "/dev/serial"
         _ <- forM j echo
         echo "eeeeeeeeeeeeeeeeeeeeeeeee"
+        k <- lsT "/dev/serial/by-id"
+        _ <- forM k echo
+        echo "fffffffffffffffffffffffff"
         derefs <- forM cDevices deref
         echo "XXXXXXXXXXXXX"
         _ <- forM derefs echo
