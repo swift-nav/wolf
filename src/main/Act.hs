@@ -113,6 +113,11 @@ exec container uid metadata =
                  )
       docker dataDir storeDir Container{..} = do
         derefs <- forM cDevices deref
+        echo "XXXXXXXXXXXXX"
+        _ <- forM derefs echo
+        l <- lsT "/dev"
+        _ <- forM l echo
+        echo "YYYYYYYYYYYYY"
         run_ "docker" $ concat
           [["run"]
           , devices derefs
