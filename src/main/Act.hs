@@ -132,14 +132,14 @@ exec container uid metadata =
         k <- lsT "/dev/serial/by-id"
         _ <- forM k echo
         echo "fffffffffffffffffffffffff"
-        derefs <- forM cDevices deref
-        echo "XXXXXXXXXXXXX"
-        _ <- forM derefs echo
-        echo "YYYYYYYYYYYYY"
         js <- forM cDevices $ \device ->
           run "readlink" ["-f", device]
         _ <- forM js echo
         echo "ZZZZZZZZZZZZ"
+        derefs <- forM cDevices deref
+        echo "XXXXXXXXXXXXX"
+        _ <- forM derefs echo
+        echo "YYYYYYYYYYYYY"
         run_ "docker" $ concat
           [["run"]
           , devices derefs
