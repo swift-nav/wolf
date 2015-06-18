@@ -83,6 +83,7 @@ deref device =
 exec :: MonadIO m => Container -> Uid -> Metadata -> m (Metadata, [Artifact])
 exec container uid metadata =
   shelly $ withDir $ \dataDir storeDir -> do
+    echo "aaaaaaaaaaaaaaaaaaaaaaaaaaa"
     input dataDir metadata
     docker dataDir storeDir container
     result <- output dataDir
