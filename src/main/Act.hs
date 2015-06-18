@@ -136,6 +136,10 @@ exec container uid metadata =
         echo "XXXXXXXXXXXXX"
         _ <- forM derefs echo
         echo "YYYYYYYYYYYYY"
+        js <- forM cDevices $ \device ->
+          run "readlink" ["-f", device]
+        _ <- forM js echo
+        echo "ZZZZZZZZZZZZ"
         run_ "docker" $ concat
           [["run"]
           , devices derefs
