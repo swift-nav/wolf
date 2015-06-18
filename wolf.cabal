@@ -62,9 +62,9 @@ executable wolf-register
   hs-source-dirs:      src/main
   ghc-options:         -Wall -fno-warn-orphans -main-is Register
   build-depends:       base >= 4.7 && < 4.8
-                     , wolf
                      , optparse-applicative
                      , text
+                     , wolf
                      , yaml
 
 executable wolf-execute
@@ -73,9 +73,9 @@ executable wolf-execute
   hs-source-dirs:      src/main
   ghc-options:         -Wall -fno-warn-orphans -main-is Execute
   build-depends:       base >= 4.7 && < 4.8
-                     , wolf
                      , optparse-applicative
                      , text
+                     , wolf
                      , yaml
 
 executable wolf-decide
@@ -84,9 +84,9 @@ executable wolf-decide
   hs-source-dirs:      src/main
   ghc-options:         -Wall -fno-warn-orphans -main-is Decide
   build-depends:       base >= 4.7 && < 4.8
-                     , wolf
                      , optparse-applicative
                      , text
+                     , wolf
                      , yaml
 
 executable wolf-act
@@ -95,11 +95,12 @@ executable wolf-act
   hs-source-dirs:      src/main
   ghc-options:         -Wall -fno-warn-orphans -main-is Act
   build-depends:       base >= 4.7 && < 4.8
-                     , wolf
                      , bytestring
                      , cryptohash
                      , optparse-applicative
                      , shelly
                      , text
                      , transformers
+                     , unix
+                     , wolf
                      , yaml

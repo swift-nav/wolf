@@ -10,12 +10,13 @@ import Control.Monad.IO.Class     ( MonadIO )
 import Crypto.Hash                ( hash )
 import Data.ByteString            ( length )
 import Data.ByteString.Lazy       ( fromStrict )
-import Data.Text                  ( Text, pack, append, words )
+import Data.Text                  ( Text, pack, append, words, unpack )
 import Data.Yaml
 import Network.AWS.Flow           ( Artifact, Metadata, Queue, Uid, runFlowT, act )
 import Network.AWS.Flow.Env       ( flowEnv )
 import Options.Applicative hiding ( action )
 import Shelly              hiding ( FilePath )
+import System.Posix.Files         ( getFileStatus, isSymbolicLink, readSymbolicLink )
 import Prelude             hiding ( length, readFile, words, writeFile )
 
 data Container = Container
@@ -70,6 +71,15 @@ argsPI =
           , aContainer = container
           }
 
+deref :: MonadIO m => Text -> m Text
+deref device =
+  liftIO $ do
+    status <- getFileStatus (unpack device)
+    if isSymbolicLink status then
+      readSymbolicLink (unpack device) >>= return . pack
+    else
+      return device
+
 exec :: MonadIO m => Container -> Uid -> Metadata -> m (Metadata, [Artifact])
 exec container uid metadata =
   shelly $ withDir $ \dataDir storeDir -> do
@@ -101,17 +111,18 @@ exec container uid metadata =
                  , fromIntegral $ length blob
                  , fromStrict blob
                  )
-      docker dataDir storeDir Container{..} =
+      docker dataDir storeDir Container{..} = do
+        derefs <- forM cDevices deref
         run_ "docker" $ concat
           [["run"]
-          , devices
+          , devices derefs
           , volumes
           , environment
           , [cImage]
           , words cCommand
           ] where
-            devices =
-              concatMap (("--device" :) . return) cDevices
+            devices derefs =
+              concatMap (("--device" :) . return) derefs
             volumes =
               concatMap (("--volume" :) . return) $
                 append (toTextIgnore dataDir)  ":/app/data"  :
