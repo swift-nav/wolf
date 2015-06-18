@@ -102,25 +102,18 @@ exec container uid metadata =
                  , fromStrict blob
                  )
       docker dataDir storeDir Container{..} = do
-        derefs <- forM cDevices $ \device -> do
-          d <- run "readlink" ["-f", device]
-          return (strip d)
+        devices <- forM cDevices $ \device ->
+          liftM strip $ run "readlink" ["-f", device]
         run_ "docker" $ concat
           [["run"]
-          , devices derefs
-          , volumes
-          , environment
+          , concatMap (("--device" :) . return) devices
+          , concatMap (("--env" :)    . return) cEnvironment
+          , concatMap (("--volume" :) . return) $
+              append (toTextIgnore dataDir)  ":/app/data"  :
+              append (toTextIgnore storeDir) ":/app/store" : cVolumes
           , [cImage]
           , words cCommand
-          ] where
-            devices derefs =
-              concatMap (("--device" :) . return) derefs
-            volumes =
-              concatMap (("--volume" :) . return) $
-                append (toTextIgnore dataDir)  ":/app/data"  :
-                append (toTextIgnore storeDir) ":/app/store" : cVolumes
-            environment =
-              concatMap (("--env" :) . return) cEnvironment
+          ]
 
 main :: IO ()
 main =
