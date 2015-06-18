@@ -10,7 +10,7 @@ import Control.Monad.IO.Class     ( MonadIO )
 import Crypto.Hash                ( hash )
 import Data.ByteString            ( length )
 import Data.ByteString.Lazy       ( fromStrict )
-import Data.Text                  ( Text, pack, append, words, unpack )
+import Data.Text                  ( Text, pack, append, words, unpack, strip )
 import Data.Yaml
 import Network.AWS.Flow           ( Artifact, Metadata, Queue, Uid, runFlowT, act )
 import Network.AWS.Flow.Env       ( flowEnv )
@@ -132,8 +132,9 @@ exec container uid metadata =
         k <- lsT "/dev/serial/by-id"
         _ <- forM k echo
         echo "fffffffffffffffffffffffff"
-        js <- forM cDevices $ \device ->
-          run "readlink" ["-f", device]
+        js <- forM cDevices $ \device -> do
+          x <- run "readlink" ["-f", device]
+          return (strip x)
         _ <- forM js echo
         echo "ZZZZZZZZZZZZ"
         derefs <- forM cDevices deref
