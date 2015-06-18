@@ -33,6 +33,7 @@ data FlowConfig = FlowConfig
   , fcPollTimeout :: Int
   , fcDomain      :: Text
   , fcBucket      :: Text
+  , fcPrefix      :: Text
   }
 
 data FlowEnv = FlowEnv
@@ -41,6 +42,7 @@ data FlowEnv = FlowEnv
   , fePollEnv :: Env
   , feDomain  :: Text
   , feBucket  :: Text
+  , fePrefix  :: Text
   }
 
 data FlowError

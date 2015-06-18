@@ -7,3 +7,4 @@
   poll-timeout: 70000000
   domain: logd-domain
   bucket: mfine-artifacts
+  prefix: stuff
