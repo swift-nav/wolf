@@ -16,6 +16,7 @@ import Network.AWS.Flow           ( Artifact, Metadata, Queue, Uid, runFlowT, ac
 import Network.AWS.Flow.Env       ( flowEnv )
 import Options.Applicative hiding ( action )
 import Shelly              hiding ( FilePath )
+import System.Directory
 import System.Posix.Files         ( getFileStatus, isSymbolicLink, readSymbolicLink )
 import Prelude             hiding ( length, readFile, words, writeFile )
 
@@ -82,8 +83,10 @@ deref' device =
 
 deref :: MonadIO m => Text -> m Text
 deref device =
-  liftIO $
-    readSymbolicLink (unpack device) >>= return . pack
+  liftIO $ do
+    d <- readSymbolicLink (unpack device)
+    e <- canonicalizePath d
+    return (pack e)
 
 exec :: MonadIO m => Container -> Uid -> Metadata -> m (Metadata, [Artifact])
 exec container uid metadata =

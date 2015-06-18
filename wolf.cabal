@@ -38,6 +38,7 @@ library
                      , conduit
                      , conduit-extra
                      , cryptohash
+                     , directory
                      , exceptions
                      , fast-logger
                      , formatting
@@ -49,9 +50,11 @@ library
                      , mtl-compat
                      , optparse-applicative
                      , safe
+                     , shelly
                      , text
                      , transformers
                      , transformers-base
+                     , unix
                      , unordered-containers
                      , uuid
                      , yaml
@@ -97,6 +100,7 @@ executable wolf-act
   build-depends:       base >= 4.7 && < 4.8
                      , bytestring
                      , cryptohash
+                     , directory
                      , optparse-applicative
                      , shelly
                      , text
