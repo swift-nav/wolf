@@ -85,6 +85,7 @@ exec container uid metadata =
   shelly $ withDir $ \dataDir storeDir -> do
     echo "aaaaaaaaaaaaaaaaaaaaaaaaaaa"
     input dataDir metadata
+    echo "bbbbbbbbbbbbbbbbbbbbbbbbbbb"
     docker dataDir storeDir container
     result <- output dataDir
     artifacts <- store storeDir
@@ -113,6 +114,7 @@ exec container uid metadata =
                  , fromStrict blob
                  )
       docker dataDir storeDir Container{..} = do
+        echo "ccccccccccccccccccccccccc"
         derefs <- forM cDevices deref
         echo "XXXXXXXXXXXXX"
         _ <- forM derefs echo
