@@ -9,5 +9,5 @@ cabal-dev
 .hsenv
 .cabal-sandbox/
 cabal.sandbox.config
+.stack-work/
 plan.yaml
-config.yaml
