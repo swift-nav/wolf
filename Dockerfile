@@ -2,14 +2,19 @@ FROM haskell:7.8
 
 WORKDIR /app
 
-RUN echo "deb http://http.debian.net/debian jessie-backports main" > /etc/apt/sources.list.d/jessie-backports.list && \
+RUN apt-get update && \
+    apt-get install -y --force-yes wget && \
+    wget -q -O- https://s3.amazonaws.com/download.fpcomplete.com/debian/fpco.key | apt-key add - && \
+    echo 'deb http://download.fpcomplete.com/debian/jessie stable main'| tee /etc/apt/sources.list.d/fpco.list && \
+    echo "deb http://http.debian.net/debian jessie-backports main" | tee /etc/apt/sources.list.d/jessie-backports.list && \
     apt-get update && \
-    apt-get install -y --force-yes docker.io g++
+    apt-get install -y --force-yes stack docker.io g++
 
-COPY cabal.config /app/cabal.config
-COPY wolf.cabal /app/wolf.cabal
-RUN cabal update && cabal install --only-dependencies -j4
+ENV PATH /root/.local/bin:$PATH
 
-COPY . /app
-RUN cabal install
+COPY LICENSE Setup.hs wolf.cabal stack.yaml /app/
+RUN stack build wolf --only-dependencies
+
+COPY src /app/src
+RUN stack build wolf --copy-bins
 

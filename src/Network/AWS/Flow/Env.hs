@@ -14,9 +14,9 @@ import Control.Monad.Except    ( runExceptT )
 import Control.Monad.Trans.AWS
 import Data.Aeson
 import Network.AWS.Flow
-import Network.HTTP.Conduit    ( conduitManagerSettings
-                               , managerResponseTimeout
-                               , newManager )
+import Network.HTTP.Conduit    ( managerResponseTimeout
+                               , newManager
+                               , tlsManagerSettings )
 import System.Log.FastLogger   ( defaultBufSize
                                , flushLogStr
                                , newStderrLoggerSet
@@ -69,7 +69,7 @@ flowEnv FlowConfig{..} = do
   pollEnv <- newEnv' pollManager <&> envLogger .~ logger
   return $ FlowEnv (logStrLn loggerSet) env pollEnv fcDomain fcBucket fcPrefix where
     managerSettings timeout =
-      conduitManagerSettings { managerResponseTimeout = Just timeout }
+      tlsManagerSettings { managerResponseTimeout = Just timeout }
     newEnv' m =
       runExceptT (newEnv fcRegion fcCredentials m) >>= either error return
     logStrLn ls s =
