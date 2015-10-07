@@ -1,0 +1,3 @@
+---
+  image: swift-nav/hello-world:v0.1
+  command: python world.py

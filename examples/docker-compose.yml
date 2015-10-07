@@ -1,0 +1,29 @@
+wolf:
+  image: swift-nav/wolf:v0.1
+  environment:
+    - AWS_ACCESS_KEY_ID
+    - AWS_SECRET_ACCESS_KEY
+  volumes:
+    - ./cfg:/cfg
+    - /var/run/docker.sock:/var/run/docker.sock
+
+decide:
+  extends:
+    file: docker-compose.yml
+    service: wolf
+  restart: always
+  command: wolf-decide -c '/cfg/config.yaml' -p '/cfg/plan.yaml'
+
+hello:
+  extends:
+    file: docker-compose.yml
+    service: wolf
+  restart: always
+  command: wolf-act -c '/cfg/config.yaml' -q 'hello-queue' -x '/cfg/hello.yaml'
+
+world:
+  extends:
+    file: docker-compose.yml
+    service: wolf
+  restart: always
+  command: wolf-act -c '/cfg/config.yaml' -q 'world-queue' -x '/cfg/world.yaml'
