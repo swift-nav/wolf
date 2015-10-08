@@ -33,7 +33,7 @@ library
                      , amazonka
                      , amazonka-s3
                      , amazonka-swf
-                     , base >= 4.7 && < 4.8
+                     , base >= 4.7 && < 5
                      , bytestring
                      , conduit
                      , conduit-extra
@@ -61,7 +61,7 @@ executable wolf-register
   main-is:             Register.hs
   hs-source-dirs:      src/main
   ghc-options:         -Wall -fno-warn-orphans -main-is Register
-  build-depends:       base >= 4.7 && < 4.8
+  build-depends:       base
                      , optparse-applicative
                      , text
                      , wolf
@@ -72,7 +72,7 @@ executable wolf-execute
   main-is:             Execute.hs
   hs-source-dirs:      src/main
   ghc-options:         -Wall -fno-warn-orphans -main-is Execute
-  build-depends:       base >= 4.7 && < 4.8
+  build-depends:       base
                      , optparse-applicative
                      , text
                      , wolf
@@ -83,7 +83,7 @@ executable wolf-decide
   main-is:             Decide.hs
   hs-source-dirs:      src/main
   ghc-options:         -Wall -fno-warn-orphans -main-is Decide
-  build-depends:       base >= 4.7 && < 4.8
+  build-depends:       base
                      , optparse-applicative
                      , text
                      , wolf
@@ -95,7 +95,7 @@ executable wolf-act
   hs-source-dirs:      src/main
   ghc-options:         -Wall -fno-warn-orphans -main-is Act
   build-depends:       aeson
-                     , base >= 4.7 && < 4.8
+                     , base
                      , bytestring
                      , cryptohash
                      , optparse-applicative
