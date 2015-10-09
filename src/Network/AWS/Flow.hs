@@ -25,19 +25,19 @@ module Network.AWS.Flow
   , Plan (..)
   ) where
 
-import Control.Lens
-import Control.Monad.Catch
-import Control.Monad.Reader
+import           Control.Lens
+import           Control.Monad.Catch
+import           Control.Monad.Reader
 import qualified Data.HashMap.Strict as Map
-import Data.List
-import Data.UUID
-import Data.UUID.V4
-import Network.AWS.SWF
-import Network.AWS.Flow.Internal
-import Network.AWS.Flow.S3
-import Network.AWS.Flow.SWF
-import Network.AWS.Flow.Types
-import Safe
+import           Data.List
+import           Data.UUID
+import           Data.UUID.V4
+import           Network.AWS.SWF
+import           Network.AWS.Flow.Internal
+import           Network.AWS.Flow.S3
+import           Network.AWS.Flow.SWF
+import           Network.AWS.Flow.Types
+import           Safe
 
 -- Interface
 
