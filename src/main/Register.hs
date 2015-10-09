@@ -1,10 +1,11 @@
-{-# LANGUAGE RecordWildCards #-}
+module Register
+  ( main
+  ) where
 
-module Register ( main ) where
-
-import Data.Yaml            ( decodeFile )
-import Network.AWS.Flow     ( runFlowT, register )
-import Network.AWS.Flow.Env ( flowEnv )
+import Control.Monad.Trans.Resource hiding ( register )
+import Data.Yaml
+import Network.AWS.Flow
+import Network.AWS.Flow.Env
 import Options.Applicative
 
 data Args = Args
@@ -35,14 +36,11 @@ argsPI =
             }
 
 main :: IO ()
-main =
+main = do
   execParser argsPI >>= call where
     call Args{..} = do
-      config <- decodeFile aConfig >>= hoistMaybe "Bad Config"
-      plan <- decodeFile aPlan >>= hoistMaybe "Bad Plan"
+      config <- decodeFile aConfig >>= maybeThrow (userError "Bad Config")
+      plan <- decodeFile aPlan >>= maybeThrow (userError "Bad Plan")
       env <- flowEnv config
-      r <- runFlowT env $
+      runResourceT $ runFlowT env $
         register plan
-      print r where
-        hoistMaybe s =
-          maybe (error s) return

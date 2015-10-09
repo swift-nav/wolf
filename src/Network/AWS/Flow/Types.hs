@@ -1,22 +1,18 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ConstraintKinds            #-}
-{-# LANGUAGE FlexibleContexts           #-}
 
 module Network.AWS.Flow.Types where
 
-import Control.Applicative         ( Applicative )
-import Control.Monad.Catch         ( MonadCatch, MonadThrow )
-import Control.Monad.IO.Class      ( MonadIO )
-import Control.Monad.Except        ( ExceptT, MonadError )
-import Control.Monad.Logger        ( LoggingT, MonadLogger, LogStr )
-import Control.Monad.Reader        ( ReaderT, MonadReader )
-import Control.Monad.Trans.AWS     ( Credentials, Env, Error, Region )
-import Control.Monad.Trans.Control ( MonadBaseControl )
-import Crypto.Hash                 ( Digest, SHA256 )
-import Data.ByteString.Lazy        ( ByteString )
-import Data.Int                    ( Int64 )
-import Data.Text                   ( Text )
-import Network.AWS.SWF.Types       ( HistoryEvent )
+import Control.Monad.Catch
+import Control.Monad.Logger
+import Control.Monad.Reader
+import Control.Monad.Trans.Resource
+import Control.Monad.Trans.AWS
+import Data.ByteString.Lazy
+import Data.Conduit.Lazy
+import Data.Text
+import Network.AWS.Data.Crypto
+import Network.AWS.SWF.Types
 
 type Uid      = Text
 type Name     = Text
@@ -25,7 +21,8 @@ type Queue    = Text
 type Token    = Text
 type Timeout  = Text
 type Metadata = Maybe Text
-type Artifact = (Text, Digest SHA256, Int64, ByteString)
+type Artifact = (Text, Digest SHA256, Integer, ByteString)
+type Log      = LogStr -> IO ()
 
 data FlowConfig = FlowConfig
   { fcRegion      :: Region
@@ -38,66 +35,53 @@ data FlowConfig = FlowConfig
   }
 
 data FlowEnv = FlowEnv
-  { feLogger  :: LogStr -> IO ()
-  , feEnv     :: Env
-  , fePollEnv :: Env
-  , feDomain  :: Text
-  , feBucket  :: Text
-  , fePrefix  :: Text
+  { feLogger      :: Log
+  , feEnv         :: Env
+  , feTimeout     :: Seconds
+  , fePollTimeout :: Seconds
+  , feDomain      :: Text
+  , feBucket      :: Text
+  , fePrefix      :: Text
   }
 
-data FlowError
-  = FlowError String
-  | AWSError Error
-  deriving ( Show )
-
 newtype FlowT m a = FlowT
-  { unFlowT :: LoggingT (ReaderT FlowEnv (ExceptT FlowError m)) a
+  { unFlowT :: ReaderT FlowEnv m a
   } deriving ( Functor
              , Applicative
              , Monad
              , MonadIO
-             , MonadLogger
-             , MonadCatch
-             , MonadThrow
-             , MonadError FlowError
+             , MonadActive
+             , MonadTrans
              )
 
 type MonadFlow m =
-  ( MonadBaseControl IO m
+  ( MonadThrow m
   , MonadCatch m
-  , MonadIO m
-  , MonadLogger m
+  , MonadResource m
   , MonadReader FlowEnv m
-  , MonadError FlowError m
   )
 
 data DecideEnv = DecideEnv
-  { deLogger    :: LogStr -> IO ()
+  { deLogger    :: Log
   , dePlan      :: Plan
   , deEvents    :: [HistoryEvent]
   , deFindEvent :: Integer -> Maybe HistoryEvent
   }
 
 newtype DecideT m a = DecideT
-  { unDecideT :: LoggingT (ReaderT DecideEnv (ExceptT FlowError m)) a
+  { unDecideT :: ReaderT DecideEnv m a
   } deriving ( Functor
              , Applicative
              , Monad
              , MonadIO
-             , MonadLogger
-             , MonadCatch
-             , MonadThrow
-             , MonadError FlowError
+             , MonadActive
+             , MonadTrans
              )
 
 type MonadDecide m =
-  ( MonadBaseControl IO m
-  , MonadCatch m
-  , MonadIO m
-  , MonadLogger m
+  ( MonadCatch m
+  , MonadResource m
   , MonadReader DecideEnv m
-  , MonadError FlowError m
   )
 
 data Task = Task

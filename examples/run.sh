@@ -14,7 +14,7 @@ fi
 
 stack build wolf --copy-bins
 
-wolf-register -c 'cfg/config.yaml' -p 'cfg/plan.yaml'
+wolf-register -c 'cfg/config.yaml' -p 'cfg/plan.yaml' || true
 wolf-execute -c 'cfg/config.yaml' -p 'cfg/plan.yaml' -i 'execute.json'
 
 docker-compose up

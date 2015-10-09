@@ -2,5 +2,10 @@ flags: {}
 packages:
 - '.'
 resolver: lts-3.8
-extra-deps: []
+extra-deps:
+- amazonka-1.3.2
+- amazonka-core-1.3.2
+- amazonka-s3-1.3.2
+- amazonka-swf-1.3.2
+
 

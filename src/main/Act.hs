@@ -1,25 +1,26 @@
-{-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Act ( main ) where
+module Act
+  ( main
+  ) where
 
-import Control.Exception          ( SomeException )
-import Control.Monad              ( forever, forM, mzero, liftM )
-import Control.Monad.IO.Class     ( MonadIO )
-import Crypto.Hash                ( hash )
-import Data.Aeson.Encode          ( encodeToTextBuilder )
-import Data.ByteString            ( length )
-import Data.ByteString.Lazy       ( fromStrict )
-import Data.Text                  ( Text, pack, append, words, strip )
-import Data.Text.Lazy             ( toStrict )
-import Data.Text.Lazy.Builder     ( toLazyText )
+import Control.Exception
+import Control.Monad
+import Control.Monad.Trans.Resource
+import Control.Monad.IO.Class
+import Data.Aeson.Encode
+import Data.ByteString ( length )
+import Data.ByteString.Lazy ( fromStrict )
+import Data.Text ( Text, pack, append, words, strip )
+import Data.Text.Lazy ( toStrict )
+import Data.Text.Lazy.Builder
 import Data.Yaml
-import Network.AWS.Flow           ( Artifact, Metadata, Queue, Uid, runFlowT, act )
-import Network.AWS.Flow.Env       ( flowEnv )
+import Network.AWS.Data.Crypto
+import Network.AWS.Flow
+import Network.AWS.Flow.Env
 import Options.Applicative hiding ( action )
-import Shelly              hiding ( FilePath )
-import Prelude             hiding ( length, readFile, words, writeFile )
+import Shelly hiding ( FilePath )
+import Prelude hiding ( length, readFile, words, writeFile )
 
 data Args = Args
   { aConfig    :: FilePath
@@ -138,12 +139,9 @@ main :: IO ()
 main =
   execParser argsPI >>= call where
     call Args{..} = do
-      config <- decodeFile aConfig >>= hoistMaybe "Bad Config"
-      container <- decodeFile aContainer >>= hoistMaybe "Bad Container"
+      config <- decodeFile aConfig >>= maybeThrow (userError "Bad Config")
+      container <- decodeFile aContainer >>= maybeThrow (userError "Bad Container")
       env <- flowEnv config
-      forever $ do
-        r <- runFlowT env $
+      forever $
+        runResourceT $ runFlowT env $
           act aQueue $ exec container
-        print r where
-          hoistMaybe s =
-            maybe (error s) return

@@ -1,27 +1,14 @@
-{-# LANGUAGE RecordWildCards   #-}
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE ConstraintKinds   #-}
-{-# LANGUAGE OverloadedStrings #-}
-
 module Network.AWS.Flow.Env
   ( flowEnv
   ) where
 
-import Control.Applicative     ( (<$>), (<*>) )
-import Control.Lens            ( (.~), (<&>) )
-import Control.Monad           ( mzero )
-import Control.Monad.Except    ( runExceptT )
+import Control.Lens
+import Control.Monad
 import Control.Monad.Trans.AWS
 import Data.Aeson
-import Network.AWS.Flow
-import Network.HTTP.Conduit    ( managerResponseTimeout
-                               , newManager
-                               , tlsManagerSettings )
-import System.Log.FastLogger   ( defaultBufSize
-                               , flushLogStr
-                               , newStderrLoggerSet
-                               , pushLogStr )
-import System.IO               ( stderr )
+import Network.AWS.Flow.Types
+import System.Log.FastLogger
+import System.IO
 
 instance FromJSON Region where
   parseJSON (String v)
@@ -44,7 +31,8 @@ instance FromJSON Credentials where
   parseJSON (Object v) =
     FromEnv                     <$>
       v .: "access-key-env-var" <*>
-      v .: "secret-key-env-var"
+      v .: "secret-key-env-var" <*>
+      pure Nothing
   parseJSON _ = mzero
 
 instance FromJSON FlowConfig where
@@ -63,14 +51,7 @@ flowEnv :: FlowConfig -> IO FlowEnv
 flowEnv FlowConfig{..} = do
   loggerSet <- newStderrLoggerSet defaultBufSize
   logger <- newLogger Info stderr
-  manager <- newManager (managerSettings fcTimeout)
-  pollManager <- newManager (managerSettings fcPollTimeout)
-  env <- newEnv' manager <&> envLogger .~ logger
-  pollEnv <- newEnv' pollManager <&> envLogger .~ logger
-  return $ FlowEnv (logStrLn loggerSet) env pollEnv fcDomain fcBucket fcPrefix where
-    managerSettings timeout =
-      tlsManagerSettings { managerResponseTimeout = Just timeout }
-    newEnv' m =
-      runExceptT (newEnv fcRegion fcCredentials m) >>= either error return
+  env <- newEnv fcRegion fcCredentials <&> envLogger .~ logger
+  return $ FlowEnv (logStrLn loggerSet) env (fromIntegral fcTimeout) (fromIntegral fcPollTimeout) fcDomain fcBucket fcPrefix where
     logStrLn ls s =
       pushLogStr ls s >> flushLogStr ls

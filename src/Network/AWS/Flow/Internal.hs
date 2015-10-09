@@ -1,120 +1,100 @@
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances  #-}
 {-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ConstraintKinds       #-}
 
 module Network.AWS.Flow.Internal
-  ( runAWS
-  , runFlowT
-  , runDecide
-  , throwStringError
-  , hoistStringEither
-  , maybeToFlowError
-  , newUid
+  ( runFlowT
+  , runDecideT
+  , runAWS
   ) where
 
-import Control.Applicative         ( (<$>), (<*>) )
-import Control.Lens                ( (^.) )
-import Control.Monad               ( msum, mzero )
-import Control.Monad.Base          ( MonadBase, liftBase, liftBaseDefault )
-import Control.Monad.Except        ( MonadError, ExceptT, runExceptT, throwError )
-import Control.Monad.IO.Class      ( MonadIO, liftIO )
-import Control.Monad.Logger        ( LogStr, runLoggingT )
-import Control.Monad.Reader        ( MonadReader, ReaderT, ask, asks, local, runReaderT )
-import Control.Monad.Trans.AWS     ( AWST, Env, Error, runAWST )
-import Control.Monad.Trans.Class   ( MonadTrans, lift )
-import Control.Monad.Trans.Control ( MonadBaseControl
-                                   , MonadTransControl
-                                   , StM
-                                   , StT
-                                   , ComposeSt
-                                   , liftBaseWith
-                                   , liftWith
-                                   , defaultLiftBaseWith
-                                   , defaultRestoreM
-                                   , restoreM
-                                   , restoreT )
-import Data.Aeson                  ( FromJSON, Value(..), parseJSON, (.:) )
-import Data.HashMap.Strict         ( fromList, lookup )
-import Data.Text                   ( pack )
-import Data.UUID                   ( toString )
-import Data.UUID.V4                ( nextRandom )
-import Network.AWS.SWF
+import Control.Monad
+import Control.Monad.Base
+import Control.Monad.Catch
+import Control.Monad.Except
+import Control.Monad.Reader
+import Control.Monad.Trans.Control
+import Control.Monad.Trans.Resource
+import Control.Monad.Trans.AWS
+import Data.Aeson
 import Network.AWS.Flow.Types
-import Prelude              hiding ( lookup )
 
 -- FlowT
 
-runFlowT :: MonadIO m => FlowEnv -> FlowT m a -> m (Either FlowError a)
-runFlowT e (FlowT k) = runExceptT (runReaderT (runLoggingT k l) e) where
-  l = const . const . const $ feLogger e
+runFlowT :: FlowEnv -> FlowT m a -> m a
+runFlowT e (FlowT m) = runReaderT m e
+
+instance MonadThrow m => MonadThrow (FlowT m) where
+    throwM = lift . throwM
+
+instance MonadCatch m => MonadCatch (FlowT m) where
+    catch (FlowT m) f = FlowT (catch m (unFlowT . f))
 
 instance MonadBase b m => MonadBase b (FlowT m) where
     liftBase = liftBaseDefault
+
+instance MonadTransControl FlowT where
+    type StT FlowT a = StT (ReaderT FlowEnv) a
+
+    liftWith = defaultLiftWith FlowT unFlowT
+    restoreT = defaultRestoreT FlowT
 
 instance MonadBaseControl b m => MonadBaseControl b (FlowT m) where
     type StM (FlowT m) a = ComposeSt FlowT m a
 
     liftBaseWith = defaultLiftBaseWith
+    restoreM     = defaultRestoreM
 
-    restoreM = defaultRestoreM
+instance MonadResource m => MonadResource (FlowT m) where
+    liftResourceT = lift . liftResourceT
 
-instance MonadTrans FlowT where
-    lift = FlowT . lift . lift . lift
-
-instance MonadTransControl FlowT where
-    type StT FlowT a =
-      StT (ExceptT FlowError) (StT (ReaderT FlowEnv) a)
-
-    liftWith f = FlowT $
-      liftWith $ \g ->
-        liftWith $ \h ->
-          liftWith $ \i ->
-            f (i . h . g . unFlowT)
-
-    restoreT = FlowT . restoreT . restoreT . restoreT
+instance MonadError e m => MonadError e (FlowT m) where
+    throwError     = lift . throwError
+    catchError m f = FlowT (catchError (unFlowT m) (unFlowT . f))
 
 instance Monad m => MonadReader FlowEnv (FlowT m) where
-  ask = FlowT ask
-  local f = FlowT . local f . unFlowT
+    ask     = FlowT ask
+    local f = FlowT . local f . unFlowT
+    reader  = FlowT . reader
 
 -- DecideT
 
-runDecideT :: MonadIO m => DecideEnv -> DecideT m a -> m (Either FlowError a)
-runDecideT e (DecideT k) = runExceptT (runReaderT (runLoggingT k l) e) where
-  l = const . const . const $ deLogger e
+runDecideT :: DecideEnv -> DecideT m a -> m a
+runDecideT e (DecideT m) = runReaderT m e
+
+instance MonadThrow m => MonadThrow (DecideT m) where
+    throwM = lift . throwM
+
+instance MonadCatch m => MonadCatch (DecideT m) where
+    catch (DecideT m) f = DecideT (catch m (unDecideT . f))
 
 instance MonadBase b m => MonadBase b (DecideT m) where
     liftBase = liftBaseDefault
+
+instance MonadTransControl DecideT where
+    type StT DecideT a = StT (ReaderT DecideEnv) a
+
+    liftWith = defaultLiftWith DecideT unDecideT
+    restoreT = defaultRestoreT DecideT
 
 instance MonadBaseControl b m => MonadBaseControl b (DecideT m) where
     type StM (DecideT m) a = ComposeSt DecideT m a
 
     liftBaseWith = defaultLiftBaseWith
+    restoreM     = defaultRestoreM
 
-    restoreM = defaultRestoreM
+instance MonadResource m => MonadResource (DecideT m) where
+    liftResourceT = lift . liftResourceT
 
-instance MonadTrans DecideT where
-    lift = DecideT . lift . lift . lift
-
-instance MonadTransControl DecideT where
-    type StT DecideT a =
-      StT (ExceptT FlowError) (StT (ReaderT DecideEnv) a)
-
-    liftWith f = DecideT $
-      liftWith $ \g ->
-        liftWith $ \h ->
-          liftWith $ \i ->
-            f (i . h . g . unDecideT)
-
-    restoreT = DecideT . restoreT . restoreT . restoreT
+instance MonadError e m => MonadError e (DecideT m) where
+    throwError     = lift . throwError
+    catchError m f = DecideT (catchError (unDecideT m) (unDecideT . f))
 
 instance Monad m => MonadReader DecideEnv (DecideT m) where
-  ask = DecideT ask
-  local f = DecideT . local f . unDecideT
+    ask     = DecideT ask
+    local f = DecideT . local f . unDecideT
+    reader  = DecideT . reader
 
 -- Planning
 
@@ -168,40 +148,9 @@ instance FromJSON Timer where
 
 -- Helpers
 
-hoistAWSEither :: MonadError FlowError m => Either Error a -> m a
-hoistAWSEither = either (throwError . AWSError) return
+runAWS :: MonadFlow m => (FlowEnv -> Seconds) -> AWST m a -> m a
+runAWS to action = do
+  e <- ask
+  runAWST (feEnv e) $ timeout (to e) $ action
 
-runAWS :: MonadFlow m => (FlowEnv -> Env) -> AWST m a -> m a
-runAWS env action = do
-  e <- asks env
-  r <- runAWST e action
-  hoistAWSEither r
 
-throwStringError :: MonadError FlowError m => String -> m a
-throwStringError = throwError . FlowError
-
-hoistStringEither :: MonadError FlowError m => Either String a -> m a
-hoistStringEither = either throwStringError return
-
-runDecide :: (MonadError FlowError m, MonadIO m)
-          => (LogStr -> IO ()) -> Plan -> [HistoryEvent] -> DecideT m a -> m a
-runDecide logger plan events action =
-  runDecideT env action >>= hoistFlowEither
-  where
-    env = DecideEnv logger plan events findEvent where
-      findEvent =
-        flip lookup $ fromList $ flip map events $ \e ->
-          (e ^. heEventId, e)
-    hoistFlowEither = either throwError return
-
-maybeToEither :: e -> Maybe a -> Either e a
-maybeToEither e = maybe (Left e) Right
-
-maybeToFlowError :: MonadError FlowError m => String -> Maybe a -> m a
-maybeToFlowError e = hoistStringEither . maybeToEither e
-
-newUid :: MonadIO m => m Uid
-newUid =
-  liftIO $ do
-    r <- nextRandom
-    return $ pack $ toString r

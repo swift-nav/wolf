@@ -1,13 +1,14 @@
-{-# LANGUAGE RecordWildCards #-}
+module Decide
+  ( main
+  ) where
 
-module Decide ( main ) where
-
-import Control.Monad        ( forever )
-import Data.Yaml            ( decodeFile )
-import Network.AWS.Flow     ( runFlowT, decide )
-import Network.AWS.Flow.Env ( flowEnv )
+import Control.Monad
+import Control.Monad.Trans.Resource
+import Data.Yaml
+import Network.AWS.Flow
+import Network.AWS.Flow.Env
 import Options.Applicative
-import Prelude       hiding ( readFile )
+import Prelude hiding ( readFile )
 
 data Args = Args
   { aConfig :: FilePath
@@ -37,15 +38,12 @@ argsPI =
             }
 
 main :: IO ()
-main =
+main = do
   execParser argsPI >>= call where
     call Args{..} = do
-      config <- decodeFile aConfig >>= hoistMaybe "Bad Config"
-      plan <- decodeFile aPlan >>= hoistMaybe "Bad Plan"
+      config <- decodeFile aConfig >>= maybeThrow (userError "Bad Config")
+      plan <- decodeFile aPlan >>= maybeThrow (userError "Bad Plan")
       env <- flowEnv config
-      forever $ do
-        r <- runFlowT env $
+      forever $
+        runResourceT $ runFlowT env $
           decide plan
-        print r where
-          hoistMaybe s =
-            maybe (error s) return
