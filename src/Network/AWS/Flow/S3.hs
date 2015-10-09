@@ -8,16 +8,14 @@ import Control.Monad.Trans.AWS
 import Data.Conduit.Binary
 import Data.Monoid
 import Network.AWS.Flow.Types
-import Network.AWS.Flow.Internal
 import Network.AWS.S3
 
 -- Actions
 
 putObjectAction :: MonadFlow m => Artifact -> m ()
 putObjectAction (key, hash, size, blob) = do
-  e <- ask
-  runAWS feTimeout $ void $
-    send $ putObject
-             (BucketName $ feBucket e)
-             (ObjectKey $ (fePrefix e) <> "/" <> key)
-             (Hashed $ hashedBody hash size $ sourceLbs blob)
+  timeout' <- asks feTimeout
+  bucket' <- asks feBucket
+  prefix <- asks fePrefix
+  void $ timeout timeout' $
+    send $ putObject (BucketName $ bucket') (ObjectKey $ prefix <> "/" <> key) (Hashed $ hashedBody hash size $ sourceLbs blob)

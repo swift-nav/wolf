@@ -5,7 +5,6 @@ module Register
 import Control.Monad.Trans.Resource hiding ( register )
 import Data.Yaml
 import Network.AWS.Flow
-import Network.AWS.Flow.Env
 import Options.Applicative
 
 data Args = Args

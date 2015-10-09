@@ -17,7 +17,6 @@ import Data.Text.Lazy.Builder
 import Data.Yaml
 import Network.AWS.Data.Crypto
 import Network.AWS.Flow
-import Network.AWS.Flow.Env
 import Options.Applicative hiding ( action )
 import Shelly hiding ( FilePath )
 import Prelude hiding ( length, readFile, words, writeFile )

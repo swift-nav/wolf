@@ -3,20 +3,13 @@ module Network.AWS.Flow
   , execute
   , act
   , decide
+  , flowEnv
   , runFlowT
   , maybeThrow
   , Uid
-  , Name
-  , Version
   , Queue
-  , Token
-  , Timeout
   , Metadata
   , Artifact
-  , FlowConfig (..)
-  , FlowEnv (..)
-  , FlowT
-  , MonadFlow
   , Task (..)
   , Timer (..)
   , Start (..)
@@ -33,7 +26,7 @@ import           Data.List
 import           Data.UUID
 import           Data.UUID.V4
 import           Network.AWS.SWF
-import           Network.AWS.Flow.Internal
+import           Network.AWS.Flow.Env
 import           Network.AWS.Flow.S3
 import           Network.AWS.Flow.SWF
 import           Network.AWS.Flow.Types

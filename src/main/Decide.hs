@@ -6,7 +6,6 @@ import Control.Monad
 import Control.Monad.Trans.Resource
 import Data.Yaml
 import Network.AWS.Flow
-import Network.AWS.Flow.Env
 import Options.Applicative
 import Prelude hiding ( readFile )
 
