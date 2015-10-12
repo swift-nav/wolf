@@ -1,13 +1,13 @@
-{-# LANGUAGE RecordWildCards #-}
+module Execute
+  ( main
+  ) where
 
-module Execute ( main ) where
-
-import Data.Text.IO         ( readFile )
-import Data.Yaml            ( decodeFile )
-import Network.AWS.Flow     ( Plan (..), Start (..), runFlowT, execute )
-import Network.AWS.Flow.Env ( flowEnv )
+import Control.Monad.Trans.Resource
+import Data.Text.IO
+import Data.Yaml
+import Network.AWS.Flow
 import Options.Applicative
-import Prelude       hiding ( readFile )
+import Prelude hiding ( readFile )
 
 data Args = Args
   { aConfig :: FilePath
@@ -47,14 +47,11 @@ main :: IO ()
 main =
   execParser argsPI >>= call where
     call Args{..} = do
-      config <- decodeFile aConfig >>= hoistMaybe "Bad Config"
-      plan <- decodeFile aPlan >>= hoistMaybe "Bad Plan"
+      config <- decodeFile aConfig >>= maybeThrow (userError "Bad Config")
+      plan <- decodeFile aPlan >>= maybeThrow (userError "Bad Plan")
       input <- readFileMaybe aInput
       env <- flowEnv config
-      r <- runFlowT env $
-        execute (strtTask $ plnStart plan) input
-      print r where
-        readFileMaybe =
-          maybe (return Nothing) ((>>= return . Just) . readFile)
-        hoistMaybe s =
-          maybe (error s) return
+      runResourceT $ runFlowT env $
+        execute (strtTask $ plnStart plan) input where
+          readFileMaybe =
+            maybe (return Nothing) ((>>= return . Just) . readFile)

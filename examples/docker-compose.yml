@@ -5,6 +5,7 @@ wolf:
     - AWS_SECRET_ACCESS_KEY
   volumes:
     - ./cfg:/cfg
+    - /tmp:/tmp
     - /var/run/docker.sock:/var/run/docker.sock
 
 decide:

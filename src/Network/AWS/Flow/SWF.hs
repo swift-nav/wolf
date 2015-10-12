@@ -1,7 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE ConstraintKinds   #-}
-
 module Network.AWS.Flow.SWF
   ( registerDomainAction
   , registerActivityTypeAction
@@ -19,90 +15,97 @@ module Network.AWS.Flow.SWF
   , startChildWorkflowExecutionDecision
   ) where
 
-import Control.Lens              ( (^.), (.~), (&) )
-import Control.Monad             ( liftM )
-import Control.Monad.Reader      ( asks )
-import Control.Monad.Trans.AWS   ( paginate, send, send_ )
-import Data.Conduit              ( ($$) )
-import Data.Conduit.List         ( consume )
+import Control.Lens
+import Control.Monad.Reader
+import Control.Monad.Trans.AWS hiding ( Metadata )
+import Data.Conduit
+import Data.Conduit.List hiding ( concatMap )
 import Network.AWS.Flow.Types
-import Network.AWS.Flow.Internal ( runAWS )
 import Network.AWS.SWF
-import Safe                      ( headMay )
+import Safe
 
 -- Actions
 
 registerDomainAction :: MonadFlow m => m ()
 registerDomainAction = do
+  timeout' <- asks feTimeout
   domain <- asks feDomain
-  runAWS feEnv $
-    send_ $ registerDomain domain "30"
+  void $ timeout timeout' $
+    send $ registerDomain domain "30"
 
 registerActivityTypeAction :: MonadFlow m => Name -> Version -> Timeout -> m ()
-registerActivityTypeAction name version timeout = do
+registerActivityTypeAction name version t = do
+  timeout' <- asks feTimeout
   domain <- asks feDomain
-  runAWS feEnv $
-    send_ $ registerActivityType domain name version &
+  void $ timeout timeout' $
+    send $ registerActivityType domain name version &
       ratDefaultTaskHeartbeatTimeout .~ Just "NONE" &
       ratDefaultTaskScheduleToCloseTimeout .~ Just "NONE" &
       ratDefaultTaskScheduleToStartTimeout .~ Just "60" &
-      ratDefaultTaskStartToCloseTimeout .~ Just timeout
+      ratDefaultTaskStartToCloseTimeout .~ Just t
 
 registerWorkflowTypeAction :: MonadFlow m => Name -> Version -> Timeout -> m ()
-registerWorkflowTypeAction name version timeout = do
+registerWorkflowTypeAction name version t = do
+  timeout' <- asks feTimeout
   domain <- asks feDomain
-  runAWS feEnv $
-    send_ $ registerWorkflowType domain name version &
+  void $ timeout timeout' $
+    send $ registerWorkflowType domain name version &
       rwtDefaultChildPolicy .~ Just Abandon &
-      rwtDefaultExecutionStartToCloseTimeout .~ Just timeout &
+      rwtDefaultExecutionStartToCloseTimeout .~ Just t &
       rwtDefaultTaskStartToCloseTimeout .~ Just "60"
 
 startWorkflowExecutionAction :: MonadFlow m
                              => Uid -> Name -> Version -> Queue -> Metadata -> m ()
 startWorkflowExecutionAction uid name version queue input = do
+  timeout' <- asks feTimeout
   domain <- asks feDomain
-  runAWS feEnv $
-    send_ $ startWorkflowExecution domain uid (workflowType name version) &
-      swe1TaskList .~ Just (taskList queue) &
-      swe1Input .~ input
+  void $ timeout timeout' $
+    send $ startWorkflowExecution domain uid (workflowType name version) &
+      sTaskList .~ Just (taskList queue) &
+      sInput .~ input
 
 pollForActivityTaskAction :: MonadFlow m => Queue -> m (Token, Uid, Metadata)
 pollForActivityTaskAction queue = do
+  timeout' <- asks fePollTimeout
   domain <- asks feDomain
-  runAWS fePollEnv $ do
+  timeout timeout' $ do
     r <- send $ pollForActivityTask domain (taskList queue)
     return
-      ( r ^. pfatrTaskToken
-      , r ^. pfatrWorkflowExecution ^. weWorkflowId
-      , r ^. pfatrInput )
+      ( r ^. pfatrsTaskToken
+      , r ^. pfatrsWorkflowExecution ^. weWorkflowId
+      , r ^. pfatrsInput )
 
 respondActivityTaskCompletedAction :: MonadFlow m => Token -> Metadata -> m ()
-respondActivityTaskCompletedAction token result =
-  runAWS feEnv $
-    send_ $ respondActivityTaskCompleted token &
+respondActivityTaskCompletedAction token result = do
+  timeout' <- asks feTimeout
+  void $ timeout timeout' $
+    send $ respondActivityTaskCompleted token &
       ratcResult .~ result
 
 respondActivityTaskFailedAction :: MonadFlow m => Token -> m ()
-respondActivityTaskFailedAction token =
-  runAWS feEnv $
-    send_ $ respondActivityTaskFailed token
+respondActivityTaskFailedAction token = do
+  timeout' <- asks feTimeout
+  void $ timeout timeout' $
+    send $ respondActivityTaskFailed token
 
 pollForDecisionTaskAction :: MonadFlow m => Queue -> m (Maybe Token, [HistoryEvent])
 pollForDecisionTaskAction queue = do
+  timeout' <- asks fePollTimeout
   domain <- asks feDomain
-  runAWS fePollEnv $ do
+  timeout timeout' $ do
     rs <- paginate (pollForDecisionTask domain (taskList queue) &
       pfdtReverseOrder .~ Just True &
       pfdtMaximumPageSize .~ Just 100)
         $$ consume
     return
-      ( liftM (^. pfdtrTaskToken) (headMay rs)
-      , concatMap (^. pfdtrEvents) rs)
+      ( liftM (^. pfdtrsTaskToken) (headMay rs)
+      , concatMap (^. pfdtrsEvents) rs)
 
 respondDecisionTaskCompletedAction :: MonadFlow m => Token -> [Decision] -> m ()
-respondDecisionTaskCompletedAction token decisions =
-  runAWS feEnv $
-    send_ $ respondDecisionTaskCompleted token &
+respondDecisionTaskCompletedAction token decisions = do
+  timeout' <- asks fePollTimeout
+  void $ timeout timeout' $
+    send $ respondDecisionTaskCompleted token &
       rdtcDecisions .~ decisions
 
 -- Decisions
@@ -123,10 +126,10 @@ completeWorkflowExecutionDecision result =
         cwedaResult .~ result
 
 startTimerDecision :: Uid -> Name -> Timeout -> Decision
-startTimerDecision uid name timeout =
+startTimerDecision uid name t =
   decision StartTimer &
     dStartTimerDecisionAttributes .~ Just attrs where
-      attrs = startTimerDecisionAttributes uid timeout &
+      attrs = startTimerDecisionAttributes uid t &
         stdaControl .~ Just name
 
 continueAsNewWorkflowExecutionDecision :: Version -> Queue -> Metadata -> Decision
