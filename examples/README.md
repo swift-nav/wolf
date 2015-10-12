@@ -64,3 +64,15 @@ command to run, etc. The Hello's task configuration is found in
 Finally, the specification of containers to run is found in
 `./docker-compose.yml` - Hello and World containers will be started up
 along with a Decide container to drive the workflow.
+
+### Dependencies
+
+To build and run this example, the following dependencies are required:
+
++ [stack][1] is a tool for building Haskell projects. See the linked downloads page.
++ [docker][2] is container tooling.
++ [docker-compose][3] is container tooling.
+
+[1]: https://github.com/commercialhaskell/stack/blob/master/doc/install_and_upgrade.md
+[2]: https://www.docker.com/
+[3]: https://docs.docker.com/compose/install/
