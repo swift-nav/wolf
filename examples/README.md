@@ -47,7 +47,8 @@ The initial input for the this example is found in `./execute.json`.
 The general configuration for wolf is found in `./cfg/config.yaml` -
 it contains information around AWS region, timeouts, credential
 environment variable names, SWF domains, and S3 prefix and bucket
-information.
+information. NOTE: change the S3 bucket to somewhere you have
+permissions to write to.
 
 Tasks are composed together in the workflow's plan configuration found
 in `./cfg/plan.yaml`, specifying that we want to run the Hello task,
