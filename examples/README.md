@@ -65,6 +65,39 @@ Finally, the specification of containers to run is found in
 `./docker-compose.yml` - Hello and World containers will be started up
 along with a Decide container to drive the workflow.
 
+### Sample Output
+
+    hello_1  |
+    hello_1  | {u'run_uid': u'e9e59f03-556f-4d2a-92cb-b6ba0f451263'}
+    hello_1  |
+    hello_1  |
+    hello_1  | {u'step-0': u'execute'}
+    hello_1  |
+    hello_1  |
+    hello_1  | hello worker
+    hello_1  |
+    hello_1  |
+    hello_1  | {'step-1': 'hello', u'step-0': u'execute'}
+    hello_1  |
+    hello_1  |
+    hello_1  | {'step-1': 'hello', u'step-0': u'execute', 'storage': 'true'}
+    hello_1  |
+    world_1  |
+    world_1  | {u'run_uid': u'e9e59f03-556f-4d2a-92cb-b6ba0f451263'}
+    world_1  |
+    world_1  |
+    world_1  | {u'step-1': u'hello', u'step-0': u'execute'}
+    world_1  |
+    world_1  |
+    world_1  | world worker
+    world_1  |
+    world_1  |
+    world_1  | {'step-2': 'world', u'step-1': u'hello', u'step-0': u'execute'}
+    world_1  |
+    world_1  |
+    world_1  | {'step-2': 'world', u'step-1': u'hello', u'step-0': u'execute', 'storage': 'true'}
+    world_1  |
+
 ### Dependencies
 
 To build and run this example, the following dependencies are required:
