@@ -21,8 +21,8 @@ containers in any language environment.
 ### Containers
 
 Tasks are run from containers. This example defines a single
-container, `./hello-world`, that contains two python scripts,
-`./hello-world/hello.py` and `./hello-world/world.py`.
+container, [./hello-world][4], that contains two python scripts,
+[./hello-world/hello.py][5] and [./hello-world/world.py][6].
 
 Tasks' JSON input is accessible in the contents of the file at
 `/app/data/input.json` - this is workflow specific input, where these
@@ -40,31 +40,32 @@ Any artifacts needing to be stored besides simple outputs can be
 written to the directory `/app/store`, where all files will be
 uploaded to S3.
 
-The initial input for the this example is found in `./execute.json`.
+The initial input for the this example is found in
+[./execute.json][7].
 
 ### Configuration
 
-The general configuration for wolf is found in `./cfg/config.yaml` -
-it contains information around AWS region, timeouts, credential
-environment variable names, SWF domains, and S3 prefix and bucket
-information. NOTE: change the S3 bucket to somewhere you have
-permissions to write to.
+The general configuration for wolf is found in
+[./cfg/config.yaml][8] - it contains information around AWS region,
+timeouts, credential environment variable names, SWF domains, and S3
+prefix and bucket information. NOTE: change the S3 bucket to somewhere
+you have permissions to write to.
 
 Tasks are composed together in the workflow's plan configuration found
-in `./cfg/plan.yaml`, specifying that we want to run the Hello task,
-followed by 15 seconds of Sleep, followed by the World task. This
-workflow loops on itself and will continuously keep running - after
-World ends, Hello will start.
+in [./cfg/plan.yaml][9], specifying that we want to run the Hello
+task, followed by 15 seconds of Sleep, followed by the World
+task. This workflow loops on itself and will continuously keep
+running - after World ends, Hello will start.
 
 The configuration for each task is found in a specific yaml file
 containing the task's container parameters: which image to use, which
 command to run, etc. The Hello's task configuration is found in
-`./cfg/hello.yaml` and the World's task configuration is found in
-`./cfg/world.yaml`.
+[./cfg/hello.yaml][10] and the World's task configuration is found in
+[./cfg/world.yaml][11].
 
 Finally, the specification of containers to run is found in
-`./docker-compose.yml` - Hello and World containers will be started up
-along with a Decide container to drive the workflow.
+[./docker-compose.yml][12] - Hello and World containers will be
+started up along with a Decide container to drive the workflow.
 
 ### Sample Output
 
@@ -110,3 +111,12 @@ To build and run this example, the following dependencies are required:
 [1]: https://github.com/commercialhaskell/stack/blob/master/doc/install_and_upgrade.md
 [2]: https://www.docker.com/
 [3]: https://docs.docker.com/compose/install/
+[4]: https://github.com/swift-nav/wolf/blob/master/examples/hello-world/Dockerfile
+[5]: https://github.com/swift-nav/wolf/blob/master/examples/hello-world/hello.py
+[6]: https://github.com/swift-nav/wolf/blob/master/examples/hello-world/world.py
+[7]: https://github.com/swift-nav/wolf/blob/master/examples/execute.json
+[8]: https://github.com/swift-nav/wolf/blob/master/examples/cfg/config.yaml
+[9]: https://github.com/swift-nav/wolf/blob/master/examples/cfg/plan.yaml
+[10]: https://github.com/swift-nav/wolf/blob/master/examples/cfg/hello.yaml
+[11]: https://github.com/swift-nav/wolf/blob/master/examples/cfg/world.yaml
+[12]: https://github.com/swift-nav/wolf/blob/master/examples/docker-compose.yml
