@@ -11,7 +11,7 @@ import Control.Monad.IO.Class
 import Data.Aeson.Encode
 import Data.ByteString ( length )
 import Data.ByteString.Lazy ( fromStrict )
-import Data.Text ( Text, pack, append, words, strip )
+import Data.Text ( Text, pack, words, strip )
 import Data.Text.Lazy ( toStrict )
 import Data.Text.Lazy.Builder
 import Data.Yaml
@@ -128,8 +128,8 @@ exec container uid metadata =
           , concatMap (("--device" :) . return) devices
           , concatMap (("--env"    :) . return) cEnvironment
           , concatMap (("--volume" :) . return) $
-              append (toTextIgnore dataDir)  ":/app/data"  :
-              append (toTextIgnore storeDir) ":/app/store" : cVolumes
+              (toTextIgnore dataDir)  <> ":/app/data"  :
+              (toTextIgnore storeDir) <> ":/app/store" : cVolumes
           , [cImage]
           , words cCommand
           ]

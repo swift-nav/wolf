@@ -52,7 +52,7 @@ register Plan{..} = do
 
 execute :: MonadFlow m => Task -> Metadata -> m ()
 execute Task{..} input = do
-  uid <- liftIO $ newUid
+  uid <- liftIO newUid
   startWorkflowExecutionAction uid tskName tskVersion tskQueue input
 
 act :: MonadFlow m => Queue -> (Uid -> Metadata -> m (Metadata, [Artifact])) -> m ()
@@ -73,8 +73,8 @@ decide plan@Plan{..} = do
 -- Decisions
 
 runDecide :: Log -> Plan -> [HistoryEvent] -> DecideT m a -> m a
-runDecide logger plan events action =
-  runDecideT env action where
+runDecide logger plan events =
+  runDecideT env where
     env = DecideEnv logger plan events findEvent where
       findEvent =
         flip Map.lookup $ Map.fromList $ flip map events $ \e ->
@@ -167,7 +167,7 @@ schedule input = maybe (scheduleEnd input) (scheduleSpec input)
 
 scheduleSpec :: MonadDecide m => Metadata -> Spec -> m [Decision]
 scheduleSpec input spec = do
-  uid <- liftIO $ newUid
+  uid <- liftIO newUid
   case spec of
     Work{..} ->
       return [scheduleActivityTaskDecision uid
@@ -193,7 +193,7 @@ scheduleContinue = do
   input <- maybeThrow (userError "No Continue Start Information") $ do
     attrs <- event ^. heWorkflowExecutionStartedEventAttributes
     return $ attrs ^. weseaInput
-  uid <- liftIO $ newUid
+  uid <- liftIO newUid
   task <- asks (strtTask . plnStart . dePlan)
   return [startChildWorkflowExecutionDecision uid
            (tskName task)

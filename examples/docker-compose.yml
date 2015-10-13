@@ -3,10 +3,6 @@ wolf:
   environment:
     - AWS_ACCESS_KEY_ID
     - AWS_SECRET_ACCESS_KEY
-  volumes:
-    - ./cfg:/cfg
-    - /tmp:/tmp
-    - /var/run/docker.sock:/var/run/docker.sock
 
 decide:
   extends:
@@ -14,6 +10,8 @@ decide:
     service: wolf
   restart: always
   command: wolf-decide -c '/cfg/config.yaml' -p '/cfg/plan.yaml'
+  volumes:
+    - ./cfg:/cfg
 
 hello:
   extends:
@@ -21,6 +19,10 @@ hello:
     service: wolf
   restart: always
   command: wolf-act -c '/cfg/config.yaml' -q 'hello-queue' -x '/cfg/hello.yaml'
+  volumes:
+    - ./cfg:/cfg
+    - /tmp:/tmp
+    - /var/run/docker.sock:/var/run/docker.sock
 
 world:
   extends:
@@ -28,3 +30,7 @@ world:
     service: wolf
   restart: always
   command: wolf-act -c '/cfg/config.yaml' -q 'world-queue' -x '/cfg/world.yaml'
+  volumes:
+    - ./cfg:/cfg
+    - /tmp:/tmp
+    - /var/run/docker.sock:/var/run/docker.sock
