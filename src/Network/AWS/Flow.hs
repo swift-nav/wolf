@@ -72,11 +72,9 @@ decide :: MonadFlow m => Plan -> m ()
 decide plan@Plan{..} = do
   logInfo' "event=decide"
   (token', events) <- pollForDecisionTaskAction (tskQueue $ strtTask plnStart)
-  logInfo' "event=decide-begin"
   token <- maybeThrow (userError "No Token") token'
   logger <- asks feLogger
   decisions <- runDecide logger plan events select
-  logInfo' "event=decide-end"
   respondDecisionTaskCompletedAction token decisions
 
 -- Decisions
@@ -111,7 +109,6 @@ sleepNext name = do
 
 select :: MonadDecide m => m [Decision]
 select = do
-  logInfo' "event=select"
   event <- nextEvent [ WorkflowExecutionStarted
                      , ActivityTaskCompleted
                      , TimerFired
@@ -221,7 +218,6 @@ scheduleContinue = do
 
 child :: MonadDecide m => m [Decision]
 child = do
-  logInfo' "event=child"
   event <- nextEvent [WorkflowExecutionStarted, ActivityTaskCompleted]
   case event ^. heEventType of
     WorkflowExecutionStarted -> childStart event
