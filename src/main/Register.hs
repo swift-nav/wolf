@@ -35,7 +35,7 @@ argsPI =
             }
 
 main :: IO ()
-main = do
+main =
   execParser argsPI >>= call where
     call Args{..} = do
       config <- decodeFile aConfig >>= maybeThrow (userError "Bad Config")
