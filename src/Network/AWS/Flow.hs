@@ -20,6 +20,7 @@ module Network.AWS.Flow
 
 import           Control.Lens
 import           Control.Monad.Catch
+import           Control.Monad.Logger
 import           Control.Monad.Reader
 import qualified Data.HashMap.Strict as Map
 import           Data.List
@@ -36,6 +37,7 @@ import           Safe
 
 register :: MonadFlow m => Plan -> m ()
 register Plan{..} = do
+  logInfoN "event=register\n"
   r <- registerDomainAction
   s <- registerWorkflowTypeAction
          (tskName $ strtTask plnStart)

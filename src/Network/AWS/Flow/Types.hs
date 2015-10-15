@@ -162,19 +162,20 @@ data DecideEnv = DecideEnv
   }
 
 newtype DecideT m a = DecideT
-  { unDecideT :: ReaderT DecideEnv m a
+  { unDecideT :: LoggingT (ReaderT DecideEnv m) a
   } deriving ( Functor
              , Applicative
              , Monad
              , MonadIO
+             , MonadLogger
              , MonadActive
-             , MonadTrans
              )
 
 type MonadDecide m =
   ( MonadCatch m
   , MonadThrow m
   , MonadResource m
+  , MonadLogger m
   , MonadReader DecideEnv m
   )
 
@@ -187,11 +188,18 @@ instance MonadCatch m => MonadCatch (DecideT m) where
 instance MonadBase b m => MonadBase b (DecideT m) where
     liftBase = liftBaseDefault
 
+instance MonadTrans DecideT where
+  lift = DecideT . lift . lift
+
 instance MonadTransControl DecideT where
     type StT DecideT a = StT (ReaderT DecideEnv) a
 
-    liftWith = defaultLiftWith DecideT unDecideT
-    restoreT = defaultRestoreT DecideT
+    liftWith f = DecideT $
+      liftWith $ \g ->
+        liftWith $ \h ->
+          f (h . g . unDecideT)
+
+    restoreT = DecideT . restoreT . restoreT
 
 instance MonadBaseControl b m => MonadBaseControl b (DecideT m) where
     type StM (DecideT m) a = ComposeSt DecideT m a
@@ -212,7 +220,7 @@ instance Monad m => MonadReader DecideEnv (DecideT m) where
     reader  = DecideT . reader
 
 runDecideT :: DecideEnv -> DecideT m a -> m a
-runDecideT e (DecideT m) = runReaderT m e
+runDecideT e (DecideT m) = runReaderT (runLoggingT m (const . const . const $ deLogger e)) e
 
 data Task = Task
   { tskName    :: Name
