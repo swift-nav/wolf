@@ -69,7 +69,8 @@ library
 executable wolf-register
   default-language:    Haskell2010
   main-is:             Register.hs
-  hs-source-dirs:      src/main
+  other-modules:       Options
+  hs-source-dirs:      main
   ghc-options:         -Wall -main-is Register
   build-depends:       base
                      , basic-prelude
@@ -80,11 +81,13 @@ executable wolf-register
                      , yaml
   default-extensions:  OverloadedStrings
                        RecordWildCards
+                       NoImplicitPrelude
 
 executable wolf-execute
   default-language:    Haskell2010
   main-is:             Execute.hs
-  hs-source-dirs:      src/main
+  other-modules:       Options
+  hs-source-dirs:      main
   ghc-options:         -Wall -main-is Execute
   build-depends:       base
                      , basic-prelude
@@ -95,11 +98,13 @@ executable wolf-execute
                      , yaml
   default-extensions:  OverloadedStrings
                        RecordWildCards
+                       NoImplicitPrelude
 
 executable wolf-decide
   default-language:    Haskell2010
   main-is:             Decide.hs
-  hs-source-dirs:      src/main
+  other-modules:       Options
+  hs-source-dirs:      main
   ghc-options:         -Wall -main-is Decide
   build-depends:       base
                      , basic-prelude
@@ -110,11 +115,13 @@ executable wolf-decide
                      , yaml
   default-extensions:  OverloadedStrings
                        RecordWildCards
+                       NoImplicitPrelude
 
 executable wolf-act
   default-language:    Haskell2010
   main-is:             Act.hs
-  hs-source-dirs:      src/main
+  other-modules:       Options
+  hs-source-dirs:      main
   ghc-options:         -Wall -main-is Act
   build-depends:       aeson
                      , amazonka-core
@@ -130,3 +137,4 @@ executable wolf-act
                      , yaml
   default-extensions:  OverloadedStrings
                        RecordWildCards
+                       NoImplicitPrelude
