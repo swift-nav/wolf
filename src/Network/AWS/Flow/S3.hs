@@ -18,4 +18,4 @@ putObjectAction (key, hash, size, blob) = do
   bucket' <- asks feBucket
   prefix <- asks fePrefix
   void $ timeout timeout' $
-    send $ putObject (BucketName $ bucket') (ObjectKey $ prefix <> "/" <> key) (Hashed $ hashedBody hash size $ sourceLbs blob)
+    send $ putObject (BucketName bucket') (ObjectKey $ prefix <> "/" <> key) (Hashed $ hashedBody hash size $ sourceLbs blob)

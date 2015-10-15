@@ -128,8 +128,8 @@ exec container uid metadata =
           , concatMap (("--device" :) . return) devices
           , concatMap (("--env"    :) . return) cEnvironment
           , concatMap (("--volume" :) . return) $
-              (toTextIgnore dataDir)  <> ":/app/data"  :
-              (toTextIgnore storeDir) <> ":/app/store" : cVolumes
+              toTextIgnore dataDir  <> ":/app/data"  :
+              toTextIgnore storeDir <> ":/app/store" : cVolumes
           , [cImage]
           , words cCommand
           ]

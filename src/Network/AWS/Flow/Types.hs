@@ -91,19 +91,20 @@ data FlowEnv = FlowEnv
   }
 
 newtype FlowT m a = FlowT
-  { unFlowT :: AWST' FlowEnv m a
+  { unFlowT :: LoggingT (AWST' FlowEnv m) a
   } deriving ( Functor
              , Applicative
              , Monad
              , MonadIO
+             , MonadLogger
              , MonadActive
-             , MonadTrans
              )
 
 type MonadFlow m =
   ( MonadCatch m
   , MonadThrow m
   , MonadResource m
+  , MonadLogger m
   , MonadReader FlowEnv m
   )
 
@@ -116,11 +117,18 @@ instance MonadCatch m => MonadCatch (FlowT m) where
 instance MonadBase b m => MonadBase b (FlowT m) where
     liftBase = liftBaseDefault
 
+instance MonadTrans FlowT where
+  lift = FlowT . lift . lift
+
 instance MonadTransControl FlowT where
     type StT FlowT a = StT (ReaderT FlowEnv) a
 
-    liftWith = defaultLiftWith FlowT unFlowT
-    restoreT = defaultRestoreT FlowT
+    liftWith f = FlowT $
+      liftWith $ \g ->
+        liftWith $ \h ->
+          f (h . g . unFlowT)
+
+    restoreT = FlowT . restoreT . restoreT
 
 instance MonadBaseControl b m => MonadBaseControl b (FlowT m) where
     type StM (FlowT m) a = ComposeSt FlowT m a
@@ -144,7 +152,7 @@ instance HasEnv FlowEnv where
   environment = lens feEnv (\s a -> s { feEnv = a })
 
 runFlowT :: FlowEnv -> FlowT m a -> m a
-runFlowT e (FlowT m) = runAWST e m
+runFlowT e (FlowT m) = runAWST e (runLoggingT m (const . const . const $ feLogger e))
 
 data DecideEnv = DecideEnv
   { deLogger    :: Log
