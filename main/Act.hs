@@ -4,22 +4,20 @@ module Act
   ( main
   ) where
 
-import Control.Exception
-import Control.Monad
+import BasicPrelude hiding ( (</>), hash, length, readFile )
 import Control.Monad.Trans.Resource
-import Control.Monad.IO.Class
 import Data.Aeson.Encode
 import Data.ByteString ( length )
 import Data.ByteString.Lazy ( fromStrict )
-import Data.Text ( Text, pack, words, strip )
+import Data.Text ( pack, strip )
 import Data.Text.Lazy ( toStrict )
 import Data.Text.Lazy.Builder
-import Data.Yaml
+import Data.Yaml hiding ( Parser )
 import Network.AWS.Data.Crypto
 import Network.AWS.Flow
+import Options
 import Options.Applicative hiding ( action )
 import Shelly hiding ( FilePath )
-import Prelude hiding ( length, readFile, words, writeFile )
 
 data Args = Args
   { aConfig    :: FilePath
@@ -27,33 +25,14 @@ data Args = Args
   , aContainer :: FilePath
   } deriving ( Eq, Read, Show )
 
-argsPI :: ParserInfo Args
-argsPI =
-  info ( helper <*> argsP )
-    ( fullDesc
+args :: Parser Args
+args = Args <$> configFile <*> (pack <$> queue) <*> containerFile
+
+parser :: ParserInfo Args
+parser =
+  info ( helper <*> args ) $ fullDesc
     <> header   "act: Workflow activity"
-    <> progDesc "Workflow activity" ) where
-    argsP = args
-      <$> strOption
-          (  long    "config"
-          <> short   'c'
-          <> metavar "FILE"
-          <> help    "AWS SWF Service Flow config" )
-      <*> strOption
-          ( long     "queue"
-          <> short   'q'
-          <> metavar "NAME"
-          <> help    "AWS SWF Service Flow queue" )
-      <*> strOption
-          (  long    "container"
-          <> short   'x'
-          <> metavar "FILE"
-          <> help    "AWS SWF Service Flow worker container" ) where
-        args config queue container = Args
-          { aConfig    = config
-          , aQueue     = pack queue
-          , aContainer = container
-          }
+    <> progDesc "Workflow activity"
 
 data Container = Container
   { cImage       :: Text
@@ -83,8 +62,7 @@ instance ToJSON Control where
     ]
 
 encodeText :: ToJSON a => a -> Text
-encodeText =
-  toStrict . toLazyText . encodeToTextBuilder . toJSON
+encodeText = toStrict . toLazyText . encodeToTextBuilder . toJSON
 
 exec :: MonadIO m => Container -> Uid -> Metadata -> m (Metadata, [Artifact])
 exec container uid metadata =
@@ -134,13 +112,13 @@ exec container uid metadata =
           , words cCommand
           ]
 
+call :: Args -> IO ()
+call Args{..} = do
+  config <- decodeFile aConfig >>= maybeThrow (userError "Bad Config")
+  container <- decodeFile aContainer >>= maybeThrow (userError "Bad Container")
+  env <- flowEnv config
+  forever $ runResourceT $ runFlowT env $
+    act aQueue $ exec container
+
 main :: IO ()
-main =
-  execParser argsPI >>= call where
-    call Args{..} = do
-      config <- decodeFile aConfig >>= maybeThrow (userError "Bad Config")
-      container <- decodeFile aContainer >>= maybeThrow (userError "Bad Container")
-      env <- flowEnv config
-      forever $
-        runResourceT $ runFlowT env $
-          act aQueue $ exec container
+main = execParser parser >>= call
