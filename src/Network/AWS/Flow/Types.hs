@@ -7,19 +7,17 @@
 
 module Network.AWS.Flow.Types where
 
-import Control.Lens
+import Network.AWS.Flow.Prelude hiding ( ByteString, catch )
+
 import Control.Monad.Base
 import Control.Monad.Catch
 import Control.Monad.Except
 import Control.Monad.Logger
-import Control.Monad.Reader
 import Control.Monad.Trans.Control
 import Control.Monad.Trans.Resource
-import Control.Monad.Trans.AWS
 import Data.Aeson
 import Data.ByteString.Lazy
 import Data.Conduit.Lazy
-import Data.Text
 import Network.AWS.Data.Crypto
 import Network.AWS.SWF.Types
 

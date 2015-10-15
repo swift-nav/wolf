@@ -18,26 +18,25 @@ module Network.AWS.Flow
   , Plan (..)
   ) where
 
-import           Control.Lens
-import           Control.Monad.Catch
-import           Control.Monad.Logger
-import           Control.Monad.Reader
-import qualified Data.HashMap.Strict as Map
-import           Data.List
-import           Data.UUID
-import           Data.UUID.V4
-import           Network.AWS.SWF
 import           Network.AWS.Flow.Env
+import           Network.AWS.Flow.Logger
 import           Network.AWS.Flow.S3
 import           Network.AWS.Flow.SWF
 import           Network.AWS.Flow.Types
+import           Network.AWS.Flow.Uid
+import           Network.AWS.Flow.Prelude hiding ( Metadata )
+
+import           Control.Monad.Catch
+import qualified Data.HashMap.Strict as Map
+import           Formatting
+import           Network.AWS.SWF
 import           Safe
 
 -- Interface
 
 register :: MonadFlow m => Plan -> m ()
 register Plan{..} = do
-  logInfoN "event=register\n"
+  logInfo' "event=register"
   r <- registerDomainAction
   s <- registerWorkflowTypeAction
          (tskName $ strtTask plnStart)
@@ -54,22 +53,30 @@ register Plan{..} = do
 
 execute :: MonadFlow m => Task -> Metadata -> m ()
 execute Task{..} input = do
-  uid <- liftIO newUid
+  uid <- newUid
+  logInfo' $ sformat ("event=execute uid=" % stext) uid
   startWorkflowExecutionAction uid tskName tskVersion tskQueue input
 
 act :: MonadFlow m => Queue -> (Uid -> Metadata -> m (Metadata, [Artifact])) -> m ()
 act queue action = do
+  logInfo' "event=act"
   (token, uid, input) <- pollForActivityTaskAction queue
+  logInfo' $ sformat ("event=act-begin uid=" % stext) uid
   (output, artifacts) <- action uid input
+  logInfo' $ sformat ("event=act-finish uid=" % stext) uid
   forM_ artifacts putObjectAction
+  unless (null artifacts) $ logInfo' $ sformat ("event=artifacts uid=" % stext) uid
   respondActivityTaskCompletedAction token output
 
 decide :: MonadFlow m => Plan -> m ()
 decide plan@Plan{..} = do
+  logInfo' "event=decide"
   (token', events) <- pollForDecisionTaskAction (tskQueue $ strtTask plnStart)
+  logInfo' "event=decide-begin"
   token <- maybeThrow (userError "No Token") token'
   logger <- asks feLogger
   decisions <- runDecide logger plan events select
+  logInfo' "event=decide-end"
   respondDecisionTaskCompletedAction token decisions
 
 -- Decisions
@@ -104,6 +111,7 @@ sleepNext name = do
 
 select :: MonadDecide m => m [Decision]
 select = do
+  logInfo' "event=select"
   event <- nextEvent [ WorkflowExecutionStarted
                      , ActivityTaskCompleted
                      , TimerFired
@@ -117,6 +125,7 @@ select = do
 
 start :: MonadDecide m => HistoryEvent -> m [Decision]
 start event = do
+  logInfo' "event=start"
   input <- maybeThrow (userError "No Start Information") $ do
     attrs <- event ^. heWorkflowExecutionStartedEventAttributes
     return $ attrs ^. weseaInput
@@ -125,6 +134,7 @@ start event = do
 
 completed :: MonadDecide m => HistoryEvent -> m [Decision]
 completed event = do
+  logInfo' "event=completed"
   findEvent <- asks deFindEvent
   (input, name) <- maybeThrow (userError "No Completed Information") $ do
     attrs <- event ^. heActivityTaskCompletedEventAttributes
@@ -136,6 +146,7 @@ completed event = do
 
 timer :: MonadDecide m => HistoryEvent -> m [Decision]
 timer event = do
+  logInfo' "event=timer"
   findEvent <- asks deFindEvent
   name <- maybeThrow (userError "No Timer Information") $ do
     attrs <- event ^. heTimerFiredEventAttributes
@@ -150,6 +161,7 @@ timer event = do
 
 timerStart :: MonadDecide m => HistoryEvent -> Name -> m [Decision]
 timerStart event name = do
+  logInfo' $ sformat ("event=timer-start name=" % stext) name
   input <- maybeThrow (userError "No Timer Start Information") $ do
     attrs <- event ^. heWorkflowExecutionStartedEventAttributes
     return $ attrs ^. weseaInput
@@ -158,6 +170,7 @@ timerStart event name = do
 
 timerCompleted :: MonadDecide m => HistoryEvent -> Name -> m [Decision]
 timerCompleted event name = do
+  logInfo' $ sformat ("event=timer-completed name=" % stext) name
   input <- maybeThrow (userError "No Timer Completed Information") $ do
     attrs <- event ^. heActivityTaskCompletedEventAttributes
     return $ attrs ^. atceaResult
@@ -169,7 +182,8 @@ schedule input = maybe (scheduleEnd input) (scheduleSpec input)
 
 scheduleSpec :: MonadDecide m => Metadata -> Spec -> m [Decision]
 scheduleSpec input spec = do
-  uid <- liftIO newUid
+  uid <- newUid
+  logInfo' $ sformat ("event=schedule-spec uid=" % stext) uid
   case spec of
     Work{..} ->
       return [scheduleActivityTaskDecision uid
@@ -184,6 +198,7 @@ scheduleSpec input spec = do
 
 scheduleEnd :: MonadDecide m => Metadata -> m [Decision]
 scheduleEnd input = do
+  logInfo' "event=schedule-end"
   end <- asks (plnEnd . dePlan)
   case end of
     Stop -> return [completeWorkflowExecutionDecision input]
@@ -191,11 +206,12 @@ scheduleEnd input = do
 
 scheduleContinue :: MonadDecide m => m [Decision]
 scheduleContinue = do
+  logInfo' "event=schedule-continue"
   event <- nextEvent [WorkflowExecutionStarted]
   input <- maybeThrow (userError "No Continue Start Information") $ do
     attrs <- event ^. heWorkflowExecutionStartedEventAttributes
     return $ attrs ^. weseaInput
-  uid <- liftIO newUid
+  uid <- newUid
   task <- asks (strtTask . plnStart . dePlan)
   return [startChildWorkflowExecutionDecision uid
            (tskName task)
@@ -205,6 +221,7 @@ scheduleContinue = do
 
 child :: MonadDecide m => m [Decision]
 child = do
+  logInfo' "event=child"
   event <- nextEvent [WorkflowExecutionStarted, ActivityTaskCompleted]
   case event ^. heEventType of
     WorkflowExecutionStarted -> childStart event
@@ -213,6 +230,7 @@ child = do
 
 childStart :: MonadDecide m => HistoryEvent -> m [Decision]
 childStart event = do
+  logInfo' "event=child-start"
   input <- maybeThrow (userError "No Child Start Information") $ do
     attrs <- event ^. heWorkflowExecutionStartedEventAttributes
     return $ attrs ^. weseaInput
@@ -220,6 +238,7 @@ childStart event = do
 
 childCompleted :: MonadDecide m => HistoryEvent -> m [Decision]
 childCompleted event = do
+  logInfo' "event=child-completed"
   input <- maybeThrow (userError "No Child Completed Information") $ do
     attrs <- event ^. heActivityTaskCompletedEventAttributes
     return $ attrs ^. atceaResult
@@ -229,6 +248,3 @@ childCompleted event = do
 
 maybeThrow :: (MonadThrow m, Exception e) => e -> Maybe a -> m a
 maybeThrow e = maybe (throwM e) return
-
-newUid :: IO Uid
-newUid = toText <$> nextRandom

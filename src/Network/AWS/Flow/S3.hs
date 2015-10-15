@@ -2,12 +2,11 @@ module Network.AWS.Flow.S3
   ( putObjectAction
   ) where
 
-import Network.AWS.Data.Body
-import Control.Monad.Reader
-import Control.Monad.Trans.AWS
-import Data.Conduit.Binary
-import Data.Monoid
+import Network.AWS.Flow.Prelude hiding ( hash )
 import Network.AWS.Flow.Types
+
+import Network.AWS.Data.Body
+import Data.Conduit.Binary
 import Network.AWS.S3
 
 -- Actions
