@@ -5,6 +5,9 @@ module Network.AWS.Flow
   , decide
   , flowEnv
   , runFlowT
+  , runDecide
+  , nextEvent
+  , select
   , maybeThrow
   , Uid
   , Queue

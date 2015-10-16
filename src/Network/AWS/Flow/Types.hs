@@ -11,13 +11,11 @@ import Network.AWS.Flow.Prelude hiding ( ByteString, catch )
 
 import Control.Monad.Base
 import Control.Monad.Catch
-import Control.Monad.Except
 import Control.Monad.Logger
 import Control.Monad.Trans.Control
 import Control.Monad.Trans.Resource
 import Data.Aeson
 import Data.ByteString.Lazy
-import Data.Conduit.Lazy
 import Network.AWS.Data.Crypto
 import Network.AWS.SWF.Types
 
@@ -95,7 +93,6 @@ newtype FlowT m a = FlowT
              , Monad
              , MonadIO
              , MonadLogger
-             , MonadActive
              )
 
 type MonadFlow m =
@@ -137,10 +134,6 @@ instance MonadBaseControl b m => MonadBaseControl b (FlowT m) where
 instance MonadResource m => MonadResource (FlowT m) where
     liftResourceT = lift . liftResourceT
 
-instance MonadError e m => MonadError e (FlowT m) where
-    throwError     = lift . throwError
-    catchError m f = FlowT (catchError (unFlowT m) (unFlowT . f))
-
 instance Monad m => MonadReader FlowEnv (FlowT m) where
     ask     = FlowT ask
     local f = FlowT . local f . unFlowT
@@ -166,22 +159,17 @@ newtype DecideT m a = DecideT
              , Monad
              , MonadIO
              , MonadLogger
-             , MonadActive
              )
 
 type MonadDecide m =
-  ( MonadCatch m
-  , MonadThrow m
-  , MonadResource m
+  ( MonadThrow m
   , MonadLogger m
+  , MonadIO m
   , MonadReader DecideEnv m
   )
 
 instance MonadThrow m => MonadThrow (DecideT m) where
     throwM = lift . throwM
-
-instance MonadCatch m => MonadCatch (DecideT m) where
-    catch (DecideT m) f = DecideT (catch m (unDecideT . f))
 
 instance MonadBase b m => MonadBase b (DecideT m) where
     liftBase = liftBaseDefault
@@ -204,13 +192,6 @@ instance MonadBaseControl b m => MonadBaseControl b (DecideT m) where
 
     liftBaseWith = defaultLiftBaseWith
     restoreM     = defaultRestoreM
-
-instance MonadResource m => MonadResource (DecideT m) where
-    liftResourceT = lift . liftResourceT
-
-instance MonadError e m => MonadError e (DecideT m) where
-    throwError     = lift . throwError
-    catchError m f = DecideT (catchError (unDecideT m) (unDecideT . f))
 
 instance Monad m => MonadReader DecideEnv (DecideT m) where
     ask     = DecideT ask
