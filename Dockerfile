@@ -15,6 +15,7 @@ ENV PATH /root/.local/bin:$PATH
 COPY LICENSE Setup.hs wolf.cabal stack.yaml /app/
 RUN stack build wolf --only-dependencies
 
+COPY main /app/main
 COPY src /app/src
 RUN stack build wolf --copy-bins
 
