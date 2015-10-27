@@ -3,18 +3,24 @@ module Test.Network.AWS.Flow
   ) where
 
 import Network.AWS.Flow
-import Network.AWS.Flow.Prelude hiding ( catchIOError )
 
-import Control.Monad.Catch
-import Network.AWS.SWF
+import BasicPrelude
 import Test.Tasty
 import Test.Tasty.HUnit
 
+assertUserError :: String -> IO a -> IO ()
+assertUserError s action =
+  handleJust check (const $ return ()) $ do
+    void $ action
+    assertFailure $ "missed user error: " ++ s where
+      check e = guard $ userError s == e
+
 testSelect :: TestTree
 testSelect =
-  testCase "First test..." $ do
-    r <- runDecide undefined undefined [] select
-    r @?= []
+  testGroup "Select tests"
+    [ testCase "No events" $
+        assertUserError "No Next Event" $ runDecide undefined undefined [] select
+    ]
 
 tests :: TestTree
 tests =
