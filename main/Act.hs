@@ -51,7 +51,7 @@ instance FromJSON Container where
     v .:? "volumes"     .!= [] <*>
     v .:? "devices"     .!= [] <*>
     v .:? "environment" .!= [] <*>
-    v .:? "link"        .!= []
+    v .:? "links"       .!= []
   parseJSON _ = mzero
 
 data Control = Control
