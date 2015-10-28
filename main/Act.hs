@@ -40,6 +40,7 @@ data Container = Container
   , cVolumes     :: [Text]
   , cDevices     :: [Text]
   , cEnvironment :: [Text]
+  , cLink        :: [Text]
   } deriving ( Eq, Read, Show )
 
 instance FromJSON Container where
@@ -49,7 +50,8 @@ instance FromJSON Container where
     v .:  "command"            <*>
     v .:? "volumes"     .!= [] <*>
     v .:? "devices"     .!= [] <*>
-    v .:? "environment" .!= []
+    v .:? "environment" .!= [] <*>
+    v .:? "link"        .!= []
   parseJSON _ = mzero
 
 data Control = Control
@@ -103,9 +105,10 @@ exec container uid metadata =
           liftM strip $ run "readlink" ["-f", device]
         run_ "docker" $ concat
           [["run"]
-          , concatMap (("--device" :) . return) devices
-          , concatMap (("--env"    :) . return) cEnvironment
-          , concatMap (("--volume" :) . return) $
+          , concatMap (("--device" :)  . return) devices
+          , concatMap (("--env"    :)  . return) cEnvironment
+          , concatMap (("--link"    :) . return) cLink
+          , concatMap (("--volume" :)  . return) $
               toTextIgnore dataDir  <> ":/app/data"  :
               toTextIgnore storeDir <> ":/app/store" : cVolumes
           , [cImage]
