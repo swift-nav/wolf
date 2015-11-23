@@ -4,6 +4,7 @@ module Options
   , inputFile
   , containerFile
   , queue
+  , containerless
   ) where
 
 import BasicPrelude
@@ -48,3 +49,9 @@ queue =
     <> short   'q'
     <> metavar "NAME"
     <> help    "AWS SWF Service Flow queue"
+
+containerless :: Parser Bool
+containerless =
+  switch
+    $  long    "containerless"
+    <> help    "Run outside of container"

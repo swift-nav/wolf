@@ -17,16 +17,17 @@ import Network.AWS.Data.Crypto
 import Network.AWS.Flow
 import Options
 import Options.Applicative hiding ( action )
-import Shelly hiding ( FilePath )
+import Shelly hiding ( FilePath, bash )
 
 data Args = Args
-  { aConfig    :: FilePath
-  , aQueue     :: Queue
-  , aContainer :: FilePath
+  { aConfig        :: FilePath
+  , aQueue         :: Queue
+  , aContainer     :: FilePath
+  , aContainerless :: Bool
   } deriving ( Eq, Read, Show )
 
 args :: Parser Args
-args = Args <$> configFile <*> (pack <$> queue) <*> containerFile
+args = Args <$> configFile <*> (pack <$> queue) <*> containerFile <*> containerless
 
 parser :: ParserInfo Args
 parser =
@@ -66,12 +67,15 @@ instance ToJSON Control where
 encodeText :: ToJSON a => a -> Text
 encodeText = toStrict . toLazyText . encodeToTextBuilder . toJSON
 
-exec :: MonadIO m => Container -> Uid -> Metadata -> m (Metadata, [Artifact])
-exec container uid metadata =
-  shelly $ withDir $ \dataDir storeDir -> do
+exec :: MonadIO m => Container -> Bool -> Uid -> Metadata -> m (Metadata, [Artifact])
+exec container dockerless uid metadata =
+  shelly $ withDir $ \dir dataDir storeDir -> do
     control dataDir $ encodeText $ Control uid
     input dataDir metadata
-    docker dataDir storeDir container
+    if dockerless then
+      docker dataDir storeDir container
+    else
+      bash dir container
     result <- output dataDir
     artifacts <- store storeDir
     return (result, artifacts) where
@@ -79,7 +83,7 @@ exec container uid metadata =
         withTmpDir $ \dir -> do
           mkdir $ dir </> pack "data"
           mkdir $ dir </> pack "store"
-          action (dir </> pack "data") (dir </> pack "store")
+          action dir (dir </> pack "data") (dir </> pack "store")
       control dir =
         writefile (dir </> pack "control.json")
       input dir =
@@ -114,6 +118,9 @@ exec container uid metadata =
           , [cImage]
           , words cCommand
           ]
+      bash dir Container{..} = do
+        cd dir
+        run_ "bash" $ words cCommand
 
 call :: Args -> IO ()
 call Args{..} = do
@@ -121,7 +128,7 @@ call Args{..} = do
   container <- decodeFile aContainer >>= maybeThrow (userError "Bad Container")
   env <- flowEnv config
   forever $ runResourceT $ runFlowT env $
-    act aQueue $ exec container
+    act aQueue $ exec container aContainerless
 
 main :: IO ()
 main = execParser parser >>= call
