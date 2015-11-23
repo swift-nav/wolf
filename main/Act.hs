@@ -120,7 +120,10 @@ exec container dockerless uid metadata =
           ]
       bash dir Container{..} = do
         cd dir
-        run_ "bash" $ words cCommand
+        run_ "bash" $ concat
+          [["-c"]
+          , words cCommand
+          ]
 
 call :: Args -> IO ()
 call Args{..} = do
