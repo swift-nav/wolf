@@ -73,9 +73,9 @@ exec container dockerless uid metadata =
     control dataDir $ encodeText $ Control uid
     input dataDir metadata
     if dockerless then
-      docker dataDir storeDir container
-    else
       bash dir container
+    else
+      docker dataDir storeDir container
     result <- output dataDir
     artifacts <- store storeDir
     return (result, artifacts) where
