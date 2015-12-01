@@ -4,20 +4,20 @@ module Act
   ( main
   ) where
 
-import BasicPrelude hiding ( ByteString, (</>), hash, length, readFile )
-import Control.Monad.Trans.Resource
-import Data.Aeson.Encode
-import Data.ByteString ( length )
-import Data.ByteString.Lazy ( ByteString, fromStrict )
-import Data.Text ( pack, strip )
-import Data.Text.Lazy ( toStrict )
-import Data.Text.Lazy.Builder
-import Data.Yaml hiding ( Parser )
-import Network.AWS.Data.Crypto
-import Network.AWS.Flow
-import Options
-import Options.Applicative hiding ( action )
-import Shelly hiding ( FilePath, bash )
+import           BasicPrelude hiding ( ByteString, (</>), hash, length, readFile )
+import           Control.Monad.Trans.Resource
+import           Data.Aeson.Encode
+import           Data.ByteString ( length )
+import qualified Data.ByteString.Lazy as BL
+import           Data.Text ( pack, strip )
+import           Data.Text.Lazy ( toStrict )
+import           Data.Text.Lazy.Builder
+import           Data.Yaml hiding ( Parser )
+import           Network.AWS.Data.Crypto
+import           Network.AWS.Flow
+import           Options
+import           Options.Applicative hiding ( action )
+import           Shelly hiding ( FilePath, bash )
 
 data Args = Args
   { aConfig        :: FilePath
@@ -67,18 +67,18 @@ instance ToJSON Control where
 encodeText :: ToJSON a => a -> Text
 encodeText = toStrict . toLazyText . encodeToTextBuilder . toJSON
 
-exec :: MonadIO m => Container -> Bool -> Uid -> Metadata -> [ByteString] -> m (Metadata, [Artifact])
-exec container dockerless uid metadata objects =
+exec :: MonadIO m => Container -> Bool -> Uid -> Metadata -> [Blob] -> m (Metadata, [Artifact])
+exec container dockerless uid metadata blobs =
   shelly $ withDir $ \dir dataDir storeDir -> do
-    control dataDir $ encodeText $ Control uid
-    storeInput storeDir
-    dataInput dataDir metadata
+    control $ dataDir </> pack "control.json"
+    storeInput $ storeDir </> pack "input"
+    dataInput $ dataDir </> pack "input.json"
     if dockerless then
       bash dir container
     else
       docker dataDir storeDir container
-    result <- dataOutput dataDir
-    artifacts <- storeOutput storeDir
+    result <- dataOutput $ dataDir </> pack "output.json"
+    artifacts <- storeOutput $ storeDir </> pack "output"
     return (result, artifacts) where
       withDir action =
         withTmpDir $ \dir -> do
@@ -87,27 +87,28 @@ exec container dockerless uid metadata objects =
           mkdir $ dir </> pack "store/input"
           mkdir $ dir </> pack "store/output"
           action dir (dir </> pack "data") (dir </> pack "store")
-      control dir =
-        writefile (dir </> pack "control.json")
-      dataInput dir =
-        maybe_ (writefile $ dir </> pack "input.json") where
-          maybe_ =
-            maybe (return ())
-      dataOutput dir =
-        catch_sh_maybe (readfile $ dir </> pack "output.json") where
+      control file =
+        writefile file $ encodeText $ Control uid
+      dataInput file =
+        maybe (return ()) (writefile file) metadata
+      dataOutput file =
+        catch_sh_maybe (readfile file) where
           catch_sh_maybe action =
             catch_sh (liftM Just action) $ \(_ :: SomeException) -> return Nothing
-      storeInput dir = do
-        return ()
+      storeInput dir =
+        forM_ blobs $ \(key, blob) -> do
+          paths <- liftM strip $ run "dirname" [key]
+          mkdir_p $ dir </> paths
+          writeBinary (dir </> key) (BL.toStrict blob)
       storeOutput dir = do
-        artifacts <- findWhen test_f (dir </> pack "output")
+        artifacts <- findWhen test_f dir
         forM artifacts $ \artifact -> do
           key <- relativeTo dir artifact
           blob <- readBinary artifact
-          return ( toTextIgnore $ uid </> key
+          return ( toTextIgnore $ key
                  , hash blob
                  , fromIntegral $ length blob
-                 , fromStrict blob
+                 , BL.fromStrict blob
                  )
       docker dataDir storeDir Container{..} = do
         devices <- forM cDevices $ \device ->

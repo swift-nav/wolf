@@ -13,6 +13,7 @@ module Network.AWS.Flow
   , Queue
   , Metadata
   , Artifact
+  , Blob
   , Task (..)
   , Timer (..)
   , Start (..)
@@ -30,7 +31,6 @@ import           Network.AWS.Flow.Uid
 import           Network.AWS.Flow.Prelude hiding ( ByteString, Metadata )
 
 import           Control.Monad.Catch
-import           Data.ByteString.Lazy hiding ( dropWhile, elem, find, map, null )
 import qualified Data.HashMap.Strict as Map
 import           Formatting
 import           Network.AWS.SWF
@@ -61,16 +61,18 @@ execute Task{..} input = do
   logInfo' $ sformat ("event=execute uid=" % stext) uid
   startWorkflowExecutionAction uid tskName tskVersion tskQueue input
 
-act :: MonadFlow m => Queue -> (Uid -> Metadata -> [ByteString] -> m (Metadata, [Artifact])) -> m ()
+act :: MonadFlow m => Queue -> (Uid -> Metadata -> [Blob] -> m (Metadata, [Artifact])) -> m ()
 act queue action = do
   logInfo' "event=act"
   (token, uid, input) <- pollForActivityTaskAction queue
   logInfo' $ sformat ("event=act-begin uid=" % stext) uid
-  keys <- listObjectsAction
-  objects <- forM keys getObjectAction
-  (output, artifacts) <- action uid input objects
+  keys <- listObjectsAction uid
+  unless (null keys) $ logInfo' $ sformat ("event=list-blobs uid=" % stext) uid
+  blobs <- forM keys $ getObjectAction uid
+  unless (null blobs) $ logInfo' $ sformat ("event=blobs uid=" % stext) uid
+  (output, artifacts) <- action uid input blobs
   logInfo' $ sformat ("event=act-finish uid=" % stext) uid
-  forM_ artifacts putObjectAction
+  forM_ artifacts $ putObjectAction uid
   unless (null artifacts) $ logInfo' $ sformat ("event=artifacts uid=" % stext) uid
   respondActivityTaskCompletedAction token output
 

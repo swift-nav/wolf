@@ -4,43 +4,46 @@ module Network.AWS.Flow.S3
   , putObjectAction
   ) where
 
-import Network.AWS.Flow.Prelude hiding ( ByteString, hash )
+import Network.AWS.Flow.Prelude hiding ( ByteString, hash, stripPrefix )
 import Network.AWS.Flow.Types
 
-import Data.ByteString.Lazy hiding ( concatMap, map )
 import Data.Conduit
-import Data.Conduit.List hiding ( concatMap, map )
+import Data.Conduit.List hiding ( concatMap, map, catMaybes )
 import Data.Conduit.Binary
+import Data.Text hiding ( concatMap, map )
 import Network.AWS.Data.Body
+import Network.AWS.Data.Text
 import Network.AWS.S3
 
 -- Actions
 
-listObjectsAction :: MonadFlow m => m [ObjectKey]
-listObjectsAction = do
+listObjectsAction :: MonadFlow m => Uid -> m [Text]
+listObjectsAction uid = do
   timeout' <- asks feTimeout
   bucket' <- asks feBucket
   prefix <- asks fePrefix
   timeout timeout' $ do
     rs <- paginate (listObjects (BucketName bucket') &
-      loPrefix .~ Just prefix)
+      loPrefix .~ Just (prefix <> "/" <> uid))
         $$ consume
-    return $
-      map (^. oKey) $
+    return $ catMaybes $
+      map (stripPrefix (prefix <> "/" <> uid <> "/") . toText . (^. oKey)) $
         concatMap (^. lorsContents) rs
 
-getObjectAction :: MonadFlow m => ObjectKey -> m ByteString
-getObjectAction key = do
+getObjectAction :: MonadFlow m => Uid -> Text -> m Blob
+getObjectAction uid key = do
   timeout' <- asks feTimeout
   bucket' <- asks feBucket
+  prefix <- asks fePrefix
   timeout timeout' $ do
-    r <- send $ getObject (BucketName bucket') key
-    sinkBody (r ^. gorsBody) sinkLbs
+    r <- send $ getObject (BucketName bucket') (ObjectKey $ prefix <> "/" <> uid <> "/" <> key)
+    blob <- sinkBody (r ^. gorsBody) sinkLbs
+    return (key, blob)
 
-putObjectAction :: MonadFlow m => Artifact -> m ()
-putObjectAction (key, hash, size, blob) = do
+putObjectAction :: MonadFlow m => Uid -> Artifact -> m ()
+putObjectAction uid (key, hash, size, blob) = do
   timeout' <- asks feTimeout
   bucket' <- asks feBucket
   prefix <- asks fePrefix
   void $ timeout timeout' $
-    send $ putObject (BucketName bucket') (ObjectKey $ prefix <> "/" <> key) (Hashed $ hashedBody hash size $ sourceLbs blob)
+    send $ putObject (BucketName bucket') (ObjectKey $ prefix <> "/" <> uid <> "/" <> key) (Hashed $ hashedBody hash size $ sourceLbs blob)
