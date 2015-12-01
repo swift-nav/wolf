@@ -27,6 +27,7 @@ type Token    = Text
 type Timeout  = Text
 type Metadata = Maybe Text
 type Artifact = (Text, Digest SHA256, Integer, ByteString)
+type Blob     = (Text, ByteString)
 type Log      = LogStr -> IO ()
 
 data FlowConfig = FlowConfig
