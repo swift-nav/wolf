@@ -4,11 +4,11 @@ module Act
   ( main
   ) where
 
-import BasicPrelude hiding ( (</>), hash, length, readFile )
+import BasicPrelude hiding ( ByteString, (</>), hash, length, readFile )
 import Control.Monad.Trans.Resource
 import Data.Aeson.Encode
 import Data.ByteString ( length )
-import Data.ByteString.Lazy ( fromStrict )
+import Data.ByteString.Lazy ( ByteString, fromStrict )
 import Data.Text ( pack, strip )
 import Data.Text.Lazy ( toStrict )
 import Data.Text.Lazy.Builder
@@ -67,35 +67,40 @@ instance ToJSON Control where
 encodeText :: ToJSON a => a -> Text
 encodeText = toStrict . toLazyText . encodeToTextBuilder . toJSON
 
-exec :: MonadIO m => Container -> Bool -> Uid -> Metadata -> m (Metadata, [Artifact])
-exec container dockerless uid metadata =
+exec :: MonadIO m => Container -> Bool -> Uid -> Metadata -> [ByteString] -> m (Metadata, [Artifact])
+exec container dockerless uid metadata objects =
   shelly $ withDir $ \dir dataDir storeDir -> do
     control dataDir $ encodeText $ Control uid
-    input dataDir metadata
+    storeInput storeDir
+    dataInput dataDir metadata
     if dockerless then
       bash dir container
     else
       docker dataDir storeDir container
-    result <- output dataDir
-    artifacts <- store storeDir
+    result <- dataOutput dataDir
+    artifacts <- storeOutput storeDir
     return (result, artifacts) where
       withDir action =
         withTmpDir $ \dir -> do
           mkdir $ dir </> pack "data"
           mkdir $ dir </> pack "store"
+          mkdir $ dir </> pack "store/input"
+          mkdir $ dir </> pack "store/output"
           action dir (dir </> pack "data") (dir </> pack "store")
       control dir =
         writefile (dir </> pack "control.json")
-      input dir =
+      dataInput dir =
         maybe_ (writefile $ dir </> pack "input.json") where
           maybe_ =
             maybe (return ())
-      output dir =
+      dataOutput dir =
         catch_sh_maybe (readfile $ dir </> pack "output.json") where
           catch_sh_maybe action =
             catch_sh (liftM Just action) $ \(_ :: SomeException) -> return Nothing
-      store dir = do
-        artifacts <- findWhen test_f dir
+      storeInput dir = do
+        return ()
+      storeOutput dir = do
+        artifacts <- findWhen test_f (dir </> pack "output")
         forM artifacts $ \artifact -> do
           key <- relativeTo dir artifact
           blob <- readBinary artifact
