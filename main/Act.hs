@@ -105,7 +105,7 @@ exec container dockerless uid metadata blobs =
         forM artifacts $ \artifact -> do
           key <- relativeTo dir artifact
           blob <- readBinary artifact
-          return ( toTextIgnore $ key
+          return ( toTextIgnore key
                  , hash blob
                  , fromIntegral $ length blob
                  , BL.fromStrict blob

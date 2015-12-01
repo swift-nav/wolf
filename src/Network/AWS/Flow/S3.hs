@@ -8,7 +8,7 @@ import Network.AWS.Flow.Prelude hiding ( ByteString, hash, stripPrefix )
 import Network.AWS.Flow.Types
 
 import Data.Conduit
-import Data.Conduit.List hiding ( concatMap, map, catMaybes )
+import Data.Conduit.List hiding ( concatMap, map, mapMaybe )
 import Data.Conduit.Binary
 import Data.Text hiding ( concatMap, map )
 import Network.AWS.Data.Body
@@ -26,8 +26,8 @@ listObjectsAction uid = do
     rs <- paginate (listObjects (BucketName bucket') &
       loPrefix .~ Just (prefix <> "/" <> uid))
         $$ consume
-    return $ catMaybes $
-      map (stripPrefix (prefix <> "/" <> uid <> "/") . toText . (^. oKey)) $
+    return $
+      mapMaybe (stripPrefix (prefix <> "/" <> uid <> "/") . toText . (^. oKey)) $
         concatMap (^. lorsContents) rs
 
 getObjectAction :: MonadFlow m => Uid -> Text -> m Blob
