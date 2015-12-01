@@ -50,8 +50,9 @@ queue =
     <> metavar "NAME"
     <> help    "AWS SWF Service Flow queue"
 
-containerless :: Parser Bool
+containerless :: Parser (Maybe String)
 containerless =
-  switch
+  optional $ strOption
     $  long    "containerless"
-    <> help    "Run outside of container"
+    <> metavar "DIR"
+    <> help    "Run outside of container in directory"

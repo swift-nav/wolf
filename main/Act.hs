@@ -4,14 +4,14 @@ module Act
   ( main
   ) where
 
-import           BasicPrelude hiding ( ByteString, (</>), hash, length, readFile )
+import           BasicPrelude hiding ( ByteString, (</>), hash, length, readFile, find )
 import           Control.Monad.Trans.Resource
 import           Data.Aeson.Encode
 import           Data.ByteString ( length )
 import qualified Data.ByteString.Lazy as BL
 import           Data.Text ( pack, strip )
 import           Data.Text.Lazy ( toStrict )
-import           Data.Text.Lazy.Builder
+import           Data.Text.Lazy.Builder hiding ( fromText )
 import           Data.Yaml hiding ( Parser )
 import           Network.AWS.Data.Crypto
 import           Network.AWS.Flow
@@ -23,7 +23,7 @@ data Args = Args
   { aConfig        :: FilePath
   , aQueue         :: Queue
   , aContainer     :: FilePath
-  , aContainerless :: Bool
+  , aContainerless :: Maybe String
   } deriving ( Eq, Read, Show )
 
 args :: Parser Args
@@ -67,16 +67,17 @@ instance ToJSON Control where
 encodeText :: ToJSON a => a -> Text
 encodeText = toStrict . toLazyText . encodeToTextBuilder . toJSON
 
-exec :: MonadIO m => Container -> Bool -> Uid -> Metadata -> [Blob] -> m (Metadata, [Artifact])
+exec :: MonadIO m => Container -> Maybe String -> Uid -> Metadata -> [Blob] -> m (Metadata, [Artifact])
 exec container dockerless uid metadata blobs =
   shelly $ withDir $ \dir dataDir storeDir -> do
     control $ dataDir </> pack "control.json"
     storeInput $ storeDir </> pack "input"
     dataInput $ dataDir </> pack "input.json"
-    if dockerless then
-      bash dir container
-    else
-      docker dataDir storeDir container
+    maybe (docker dataDir storeDir container) (bash dir container) dockerless
+--    if dockerless then
+--      bash dir container
+--    else
+--      docker dataDir storeDir container
     result <- dataOutput $ dataDir </> pack "output.json"
     artifacts <- storeOutput $ storeDir </> pack "output"
     return (result, artifacts) where
@@ -124,12 +125,11 @@ exec container dockerless uid metadata blobs =
           , [cImage]
           , words cCommand
           ]
-      bash dir Container{..} = do
+      bash dir Container{..} bashDir = do
+        files <- ls $ fromText $ pack bashDir
+        forM_ files $ flip cp_r dir
         cd dir
-        run_ "bash" $ concat
-          [["-c"]
-          , words cCommand
-          ]
+        maybe (return ()) (uncurry $ run_ . fromText) $ uncons $ words cCommand
 
 call :: Args -> IO ()
 call Args{..} = do
