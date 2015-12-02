@@ -46,6 +46,7 @@ library
                      , fast-logger
                      , formatting
                      , http-conduit
+                     , http-types
                      , lens
                      , monad-control
                      , monad-logger
