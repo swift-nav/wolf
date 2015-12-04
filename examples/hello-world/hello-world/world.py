@@ -31,7 +31,7 @@ def main():
     json.dump(output_data, output_file)
 
   printerr('\n', store_data, '\n')
-  with open('./store/world.json', 'w') as store_file:
+  with open('./store/output/world.json', 'w') as store_file:
     json.dump(store_data, store_file)
 
 if __name__ == "__main__":
