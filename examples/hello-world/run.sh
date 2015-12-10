@@ -12,7 +12,7 @@ if [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
     exit 1
 fi
 
-docker-compose run wolf wolf-register -c '/cfg/config.yaml' -p '/cfg/plan.yaml' || true
+docker-compose run wolf wolf-register -c '/cfg/config.yaml' -p '/cfg/plan.yaml'
 docker-compose run wolf wolf-execute -c '/cfg/config.yaml' -p '/cfg/plan.yaml' -i '/cfg/execute.json'
 
 docker-compose up
