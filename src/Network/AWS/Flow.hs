@@ -84,6 +84,13 @@ serializeError = \case
         s ^. serializeMessage == "key \"taskToken\" not present"
   e -> throwM e
 
+actException :: MonadFlow m => Token -> SomeException -> m ()
+actException token e = do
+  logError' "event=act-exception-begin"
+  logError' $ show e
+  logError' "event=act-exception-finish"
+  respondActivityTaskFailedAction token
+
 act :: MonadFlow m => Queue -> (Uid -> Metadata -> [Blob] -> m (Metadata, [Artifact])) -> m ()
 act queue action =
   handle serializeError $ do
@@ -94,11 +101,12 @@ act queue action =
     unless (null keys) $ logInfo' $ sformat ("event=list-blobs uid=" % stext) uid
     blobs <- forM keys $ getObjectAction uid
     unless (null blobs) $ logInfo' $ sformat ("event=blobs uid=" % stext) uid
-    (output, artifacts) <- action uid input blobs
-    logInfo' $ sformat ("event=act-finish uid=" % stext) uid
-    forM_ artifacts $ putObjectAction uid
-    unless (null artifacts) $ logInfo' $ sformat ("event=artifacts uid=" % stext) uid
-    respondActivityTaskCompletedAction token output
+    handle (actException token) $ do
+      (output, artifacts) <- action uid input blobs
+      logInfo' $ sformat ("event=act-finish uid=" % stext) uid
+      forM_ artifacts $ putObjectAction uid
+      unless (null artifacts) $ logInfo' $ sformat ("event=artifacts uid=" % stext) uid
+      respondActivityTaskCompletedAction token output
 
 decide :: MonadFlow m => Plan -> m ()
 decide plan@Plan{..} =

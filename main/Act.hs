@@ -74,10 +74,6 @@ exec container dockerless uid metadata blobs =
     storeInput $ storeDir </> pack "input"
     dataInput $ dataDir </> pack "input.json"
     maybe (docker dataDir storeDir container) (bash dir container) dockerless
---    if dockerless then
---      bash dir container
---    else
---      docker dataDir storeDir container
     result <- dataOutput $ dataDir </> pack "output.json"
     artifacts <- storeOutput $ storeDir </> pack "output"
     return (result, artifacts) where
