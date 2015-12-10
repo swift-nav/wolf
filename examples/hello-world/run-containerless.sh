@@ -12,7 +12,7 @@ if [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
     exit 1
 fi
 
-stack exec wolf-register -- -c 'cfg/config.yaml' -p 'cfg/plan.yaml' || true
+stack exec wolf-register -- -c 'cfg/config.yaml' -p 'cfg/plan.yaml'
 stack exec wolf-execute -- -c 'cfg/config.yaml' -p 'cfg/plan.yaml' -i 'cfg/execute.json'
 
 stack exec wolf-decide -- -c 'cfg/config.yaml' -p 'cfg/plan.yaml' &

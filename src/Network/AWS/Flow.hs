@@ -41,22 +41,32 @@ import           Safe
 
 -- Interface
 
+serviceError :: MonadFlow m => ErrorCode -> Error -> m ()
+serviceError code = \case
+  e@(ServiceError s) ->
+    unless check $ throwM e where
+      check =
+        s ^. serviceStatus == badRequest400 &&
+        s ^. serviceAbbrev == "SWF"         &&
+        s ^. serviceCode == code
+  e -> throwM e
+
 register :: MonadFlow m => Plan -> m ()
 register Plan{..} = do
   logInfo' "event=register"
-  r <- registerDomainAction
-  s <- registerWorkflowTypeAction
-         (tskName $ strtTask plnStart)
-         (tskVersion $ strtTask plnStart)
-         (tskTimeout $ strtTask plnStart)
-  foldM_ go [s, r] plnSpecs where
-    go rs Work{..} = do
-      r <- registerActivityTypeAction
-             (tskName wrkTask)
-             (tskVersion wrkTask)
-             (tskTimeout wrkTask)
-      return (r : rs)
-    go rs Sleep{..} = return rs
+  handle (serviceError "DomainAlreadyExists") registerDomainAction
+  handle (serviceError "TypeAlreadyExists") $ registerWorkflowTypeAction
+    (tskName $ strtTask plnStart)
+    (tskVersion $ strtTask plnStart)
+    (tskTimeout $ strtTask plnStart)
+  mapM_ go plnSpecs where
+    go Work{..} =
+      handle (serviceError "TypeAlreadyExists") $ registerActivityTypeAction
+        (tskName wrkTask)
+        (tskVersion wrkTask)
+        (tskTimeout wrkTask)
+    go Sleep{..} =
+      return ()
 
 execute :: MonadFlow m => Task -> Metadata -> m ()
 execute Task{..} input = do
