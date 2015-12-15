@@ -5,6 +5,8 @@ module Options
   , containerFile
   , queue
   , containerless
+  , gzipMetadata
+  , gzipArtifacts
   ) where
 
 import BasicPrelude
@@ -56,3 +58,16 @@ containerless =
     $  long    "containerless"
     <> metavar "DIR"
     <> help    "Run outside of container in directory"
+
+gzipMetadata :: Parser Bool
+gzipMetadata =
+  switch
+    $  long "gzip-metadata"
+    <> help "GZIP contents of metadata"
+
+gzipArtifacts :: Parser Bool
+gzipArtifacts =
+  switch
+    $  long "gzip-artifacts"
+    <> help "GZIP contents of artifacts"
+

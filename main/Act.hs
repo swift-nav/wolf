@@ -5,6 +5,7 @@ module Act
   ) where
 
 import           BasicPrelude hiding ( ByteString, (</>), hash, length, readFile, find )
+import           Codec.Compression.GZip
 import           Control.Monad.Trans.Resource
 import           Data.Aeson.Encode
 import           Data.ByteString ( length )
@@ -24,10 +25,18 @@ data Args = Args
   , aQueue         :: Queue
   , aContainer     :: FilePath
   , aContainerless :: Maybe String
+  , aGzipMetadata  :: Bool
+  , aGzipArtifacts :: Bool
   } deriving ( Eq, Read, Show )
 
 args :: Parser Args
-args = Args <$> configFile <*> (pack <$> queue) <*> containerFile <*> containerless
+args = Args        <$>
+  configFile       <*>
+  (pack <$> queue) <*>
+  containerFile    <*>
+  containerless    <*>
+  gzipMetadata     <*>
+  gzipArtifacts
 
 parser :: ParserInfo Args
 parser =
@@ -67,13 +76,13 @@ instance ToJSON Control where
 encodeText :: ToJSON a => a -> Text
 encodeText = toStrict . toLazyText . encodeToTextBuilder . toJSON
 
-exec :: MonadIO m => Container -> Maybe String -> Uid -> Metadata -> [Blob] -> m (Metadata, [Artifact])
-exec container dockerless uid metadata blobs =
+exec :: MonadIO m => Args -> Container -> Uid -> Metadata -> [Blob] -> m (Metadata, [Artifact])
+exec Args{..} container uid metadata blobs =
   shelly $ withDir $ \dir dataDir storeDir -> do
     control $ dataDir </> pack "control.json"
     storeInput $ storeDir </> pack "input"
     dataInput $ dataDir </> pack "input.json"
-    maybe (docker dataDir storeDir container) (bash dir container) dockerless
+    maybe (docker dataDir storeDir container) (bash dir container) aContainerless
     result <- dataOutput $ dataDir </> pack "output.json"
     artifacts <- storeOutput $ storeDir </> pack "output"
     return (result, artifacts) where
@@ -133,7 +142,7 @@ call Args{..} = do
   container <- decodeFile aContainer >>= maybeThrow (userError "Bad Container")
   env <- flowEnv config
   forever $ runResourceT $ runFlowT env $
-    act aQueue $ exec container aContainerless
+    act aQueue $ exec Args{..} container
 
 main :: IO ()
 main = execParser parser >>= call
