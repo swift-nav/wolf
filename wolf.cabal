@@ -147,6 +147,7 @@ executable wolf-act
                      , optparse-applicative
                      , resourcet
                      , shelly
+                     , system-filepath
                      , text
                      , transformers
                      , wolf

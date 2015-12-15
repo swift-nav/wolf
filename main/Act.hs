@@ -4,7 +4,7 @@ module Act
   ( main
   ) where
 
-import           BasicPrelude hiding ( ByteString, (</>), hash, length, readFile, find )
+import           BasicPrelude hiding ( ByteString, (</>), (<.>), hash, length, readFile, find )
 import           Codec.Compression.GZip
 import           Control.Monad.Trans.Resource
 import           Data.Aeson.Encode
@@ -14,11 +14,12 @@ import           Data.Text ( pack, strip )
 import           Data.Text.Lazy ( toStrict )
 import           Data.Text.Lazy.Builder hiding ( fromText )
 import           Data.Yaml hiding ( Parser )
+import           Filesystem.Path ( (<.>), dropExtension )
 import           Network.AWS.Data.Crypto
 import           Network.AWS.Flow
 import           Options
 import           Options.Applicative hiding ( action )
-import           Shelly hiding ( FilePath, bash )
+import           Shelly hiding ( FilePath, (<.>), bash )
 
 data Args = Args
   { aConfig        :: FilePath
@@ -95,27 +96,52 @@ exec Args{..} container uid metadata blobs =
           action dir (dir </> pack "data") (dir </> pack "store")
       control file =
         writefile file $ encodeText $ Control uid
+      writeData file blob =
+        if aGzipMetadata then
+          writeBinary file $ BL.toStrict $ decompress $ BL.fromStrict $ encodeUtf8 blob
+        else
+          writefile file blob
+      readData file =
+        if aGzipMetadata then
+          decodeUtf8 . BL.toStrict . compress . BL.fromStrict . encodeUtf8 <$> readfile file
+        else
+          readfile file
+      writeArtifact file blob =
+        if aGzipArtifacts then
+          writeBinary (dropExtension file) $ BL.toStrict $ decompress blob
+        else
+          writeBinary file $ BL.toStrict blob
+      readArtifact dir file =
+        if aGzipArtifacts then do
+          key <- relativeTo dir file
+          blob <- BL.toStrict . compress . BL.fromStrict <$> readBinary file
+          return ( toTextIgnore (key <.> ".gz")
+                 , hash blob
+                 , fromIntegral $ length blob
+                 , BL.fromStrict blob
+                 )
+          else do
+            key <- relativeTo dir file
+            blob <- readBinary file
+            return ( toTextIgnore key
+                   , hash blob
+                   , fromIntegral $ length blob
+                   , BL.fromStrict blob
+                   )
       dataInput file =
-        maybe (return ()) (writefile file) metadata
+        maybe (return ()) (writeData file) metadata
       dataOutput file =
-        catch_sh_maybe (readfile file) where
+        catch_sh_maybe (readData file) where
           catch_sh_maybe action =
             catch_sh (liftM Just action) $ \(_ :: SomeException) -> return Nothing
       storeInput dir =
         forM_ blobs $ \(key, blob) -> do
           paths <- liftM strip $ run "dirname" [key]
           mkdir_p $ dir </> paths
-          writeBinary (dir </> key) (BL.toStrict blob)
+          writeArtifact (dir </> key) blob
       storeOutput dir = do
         artifacts <- findWhen test_f dir
-        forM artifacts $ \artifact -> do
-          key <- relativeTo dir artifact
-          blob <- readBinary artifact
-          return ( toTextIgnore key
-                 , hash blob
-                 , fromIntegral $ length blob
-                 , BL.fromStrict blob
-                 )
+        forM artifacts $ readArtifact dir
       docker dataDir storeDir Container{..} = do
         devices <- forM cDevices $ \device ->
           liftM strip $ run "readlink" ["-f", device]
