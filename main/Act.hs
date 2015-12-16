@@ -26,8 +26,7 @@ data Args = Args
   , aQueue         :: Queue
   , aContainer     :: FilePath
   , aContainerless :: Maybe String
-  , aGzipMetadata  :: Bool
-  , aGzipArtifacts :: Bool
+  , aGzip          :: Bool
   } deriving ( Eq, Read, Show )
 
 args :: Parser Args
@@ -36,8 +35,8 @@ args = Args        <$>
   (pack <$> queue) <*>
   containerFile    <*>
   containerless    <*>
-  gzipMetadata     <*>
-  gzipArtifacts
+  gzip
+
 
 parser :: ParserInfo Args
 parser =
@@ -96,26 +95,16 @@ exec Args{..} container uid metadata blobs =
           action dir (dir </> pack "data") (dir </> pack "store")
       control file =
         writefile file $ encodeText $ Control uid
-      writeData file blob =
-        if aGzipMetadata then
-          writeBinary file $ BL.toStrict $ decompress $ BL.fromStrict $ encodeUtf8 blob
-        else
-          writefile file blob
-      readData file =
-        if aGzipMetadata then
-          decodeUtf8 . BL.toStrict . compress . BL.fromStrict . encodeUtf8 <$> readfile file
-        else
-          readfile file
       writeArtifact file blob =
-        if aGzipArtifacts then
+        if aGzip then
           writeBinary (dropExtension file) $ BL.toStrict $ decompress blob
         else
           writeBinary file $ BL.toStrict blob
       readArtifact dir file =
-        if aGzipArtifacts then do
+        if aGzip then do
           key <- relativeTo dir file
           blob <- BL.toStrict . compress . BL.fromStrict <$> readBinary file
-          return ( toTextIgnore (key <.> ".gz")
+          return ( toTextIgnore (key <.> "gz")
                  , hash blob
                  , fromIntegral $ length blob
                  , BL.fromStrict blob
@@ -129,9 +118,9 @@ exec Args{..} container uid metadata blobs =
                    , BL.fromStrict blob
                    )
       dataInput file =
-        maybe (return ()) (writeData file) metadata
+        maybe (return ()) (writefile file) metadata
       dataOutput file =
-        catch_sh_maybe (readData file) where
+        catch_sh_maybe (readfile file) where
           catch_sh_maybe action =
             catch_sh (liftM Just action) $ \(_ :: SomeException) -> return Nothing
       storeInput dir =
