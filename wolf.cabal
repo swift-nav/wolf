@@ -147,10 +147,12 @@ executable wolf-act
                      , optparse-applicative
                      , resourcet
                      , shelly
+                     , system-filepath
                      , text
                      , transformers
                      , wolf
                      , yaml
+                     , zlib
   default-extensions:  OverloadedStrings
                        RecordWildCards
                        NoImplicitPrelude

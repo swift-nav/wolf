@@ -4,7 +4,8 @@ module Act
   ( main
   ) where
 
-import           BasicPrelude hiding ( ByteString, (</>), hash, length, readFile, find )
+import           BasicPrelude hiding ( ByteString, (</>), (<.>), hash, length, readFile, find )
+import           Codec.Compression.GZip
 import           Control.Monad.Trans.Resource
 import           Data.Aeson.Encode
 import           Data.ByteString ( length )
@@ -13,21 +14,29 @@ import           Data.Text ( pack, strip )
 import           Data.Text.Lazy ( toStrict )
 import           Data.Text.Lazy.Builder hiding ( fromText )
 import           Data.Yaml hiding ( Parser )
+import           Filesystem.Path ( (<.>), dropExtension )
 import           Network.AWS.Data.Crypto
 import           Network.AWS.Flow
 import           Options
 import           Options.Applicative hiding ( action )
-import           Shelly hiding ( FilePath, bash )
+import           Shelly hiding ( FilePath, (<.>), bash )
 
 data Args = Args
   { aConfig        :: FilePath
   , aQueue         :: Queue
   , aContainer     :: FilePath
   , aContainerless :: Maybe String
+  , aGzip          :: Bool
   } deriving ( Eq, Read, Show )
 
 args :: Parser Args
-args = Args <$> configFile <*> (pack <$> queue) <*> containerFile <*> containerless
+args = Args        <$>
+  configFile       <*>
+  (pack <$> queue) <*>
+  containerFile    <*>
+  containerless    <*>
+  gzip
+
 
 parser :: ParserInfo Args
 parser =
@@ -67,13 +76,13 @@ instance ToJSON Control where
 encodeText :: ToJSON a => a -> Text
 encodeText = toStrict . toLazyText . encodeToTextBuilder . toJSON
 
-exec :: MonadIO m => Container -> Maybe String -> Uid -> Metadata -> [Blob] -> m (Metadata, [Artifact])
-exec container dockerless uid metadata blobs =
+exec :: MonadIO m => Args -> Container -> Uid -> Metadata -> [Blob] -> m (Metadata, [Artifact])
+exec Args{..} container uid metadata blobs =
   shelly $ withDir $ \dir dataDir storeDir -> do
     control $ dataDir </> pack "control.json"
     storeInput $ storeDir </> pack "input"
     dataInput $ dataDir </> pack "input.json"
-    maybe (docker dataDir storeDir container) (bash dir container) dockerless
+    maybe (docker dataDir storeDir container) (bash dir container) aContainerless
     result <- dataOutput $ dataDir </> pack "output.json"
     artifacts <- storeOutput $ storeDir </> pack "output"
     return (result, artifacts) where
@@ -86,6 +95,28 @@ exec container dockerless uid metadata blobs =
           action dir (dir </> pack "data") (dir </> pack "store")
       control file =
         writefile file $ encodeText $ Control uid
+      writeArtifact file blob =
+        if aGzip then
+          writeBinary (dropExtension file) $ BL.toStrict $ decompress blob
+        else
+          writeBinary file $ BL.toStrict blob
+      readArtifact dir file =
+        if aGzip then do
+          key <- relativeTo dir file
+          blob <- BL.toStrict . compress . BL.fromStrict <$> readBinary file
+          return ( toTextIgnore (key <.> "gz")
+                 , hash blob
+                 , fromIntegral $ length blob
+                 , BL.fromStrict blob
+                 )
+          else do
+            key <- relativeTo dir file
+            blob <- readBinary file
+            return ( toTextIgnore key
+                   , hash blob
+                   , fromIntegral $ length blob
+                   , BL.fromStrict blob
+                   )
       dataInput file =
         maybe (return ()) (writefile file) metadata
       dataOutput file =
@@ -96,17 +127,10 @@ exec container dockerless uid metadata blobs =
         forM_ blobs $ \(key, blob) -> do
           paths <- liftM strip $ run "dirname" [key]
           mkdir_p $ dir </> paths
-          writeBinary (dir </> key) (BL.toStrict blob)
+          writeArtifact (dir </> key) blob
       storeOutput dir = do
         artifacts <- findWhen test_f dir
-        forM artifacts $ \artifact -> do
-          key <- relativeTo dir artifact
-          blob <- readBinary artifact
-          return ( toTextIgnore key
-                 , hash blob
-                 , fromIntegral $ length blob
-                 , BL.fromStrict blob
-                 )
+        forM artifacts $ readArtifact dir
       docker dataDir storeDir Container{..} = do
         devices <- forM cDevices $ \device ->
           liftM strip $ run "readlink" ["-f", device]
@@ -133,7 +157,7 @@ call Args{..} = do
   container <- decodeFile aContainer >>= maybeThrow (userError "Bad Container")
   env <- flowEnv config
   forever $ runResourceT $ runFlowT env $
-    act aQueue $ exec container aContainerless
+    act aQueue $ exec Args{..} container
 
 main :: IO ()
 main = execParser parser >>= call
