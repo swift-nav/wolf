@@ -3,9 +3,14 @@ module Network.AWS.Flow.Prelude
   , module Control.Lens
   , module Control.Monad.Reader
   , module Control.Monad.Trans.AWS
+  , maybe_
   ) where
 
 import BasicPrelude hiding ( (<.>), uncons )
 import Control.Lens
 import Control.Monad.Reader
 import Control.Monad.Trans.AWS
+
+maybe_ :: Monad m => Maybe a -> (a -> m ()) -> m ()
+maybe_ m f = maybe (return ()) f m
+
