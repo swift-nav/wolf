@@ -97,12 +97,14 @@ act queue action =
     logInfo' "event=act"
     (token, uid, input) <- pollForActivityTaskAction queue
     logInfo' $ sformat ("event=act-begin uid=" % stext) uid
+    maybe_ input $ logDebug' . sformat ("event=act-input " % stext)
     keys <- listObjectsAction uid
     unless (null keys) $ logInfo' $ sformat ("event=list-blobs uid=" % stext) uid
     blobs <- forM keys $ getObjectAction uid
     unless (null blobs) $ logInfo' $ sformat ("event=blobs uid=" % stext) uid
     handle (actException token) $ do
       (output, artifacts) <- action uid input blobs
+      maybe_ output $ logDebug' . sformat ("event=act-output " % stext)
       logInfo' $ sformat ("event=act-finish uid=" % stext) uid
       forM_ artifacts $ putObjectAction uid
       unless (null artifacts) $ logInfo' $ sformat ("event=artifacts uid=" % stext) uid
