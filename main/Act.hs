@@ -6,6 +6,7 @@ module Act
 
 import           BasicPrelude hiding ( ByteString, (</>), (<.>), hash, length, readFile, find )
 import           Codec.Compression.GZip
+import           Control.Monad.Logger
 import           Control.Monad.Trans.Resource
 import           Data.Aeson.Encode
 import           Data.ByteString ( length )
@@ -27,6 +28,7 @@ data Args = Args
   , aContainer     :: FilePath
   , aContainerless :: Maybe String
   , aGzip          :: Bool
+  , aLogLevel      :: LogLevel
   } deriving ( Eq, Read, Show )
 
 args :: Parser Args
@@ -35,7 +37,8 @@ args = Args        <$>
   (pack <$> queue) <*>
   containerFile    <*>
   containerless    <*>
-  gzip
+  gzip             <*>
+  logLevel
 
 
 parser :: ParserInfo Args
