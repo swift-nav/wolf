@@ -1,5 +1,4 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-
 module Act
   ( main
   ) where
@@ -36,7 +35,6 @@ args = Args        <$>
   containerFile    <*>
   containerless    <*>
   gzip
-
 
 parser :: ParserInfo Args
 parser =

@@ -88,7 +88,8 @@ executable wolf-register
   other-modules:       Options
   hs-source-dirs:      main
   ghc-options:         -Wall -main-is Register
-  build-depends:       base
+  build-depends:       async
+                     , base
                      , basic-prelude
                      , optparse-applicative
                      , resourcet
@@ -105,7 +106,8 @@ executable wolf-execute
   other-modules:       Options
   hs-source-dirs:      main
   ghc-options:         -Wall -main-is Execute
-  build-depends:       base
+  build-depends:       async
+                     , base
                      , basic-prelude
                      , optparse-applicative
                      , resourcet
@@ -122,7 +124,8 @@ executable wolf-decide
   other-modules:       Options
   hs-source-dirs:      main
   ghc-options:         -Wall -main-is Decide
-  build-depends:       base
+  build-depends:       async
+                     , base
                      , basic-prelude
                      , optparse-applicative
                      , resourcet

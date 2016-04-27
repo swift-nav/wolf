@@ -3,6 +3,7 @@ module Decide
   ) where
 
 import BasicPrelude
+import Control.Concurrent.Async
 import Control.Monad.Trans.Resource
 import Data.Yaml hiding ( Parser )
 import Network.AWS.Flow
@@ -23,12 +24,19 @@ parser =
     <> header   "decide: Decide a workflow"
     <> progDesc "Decide a workflow"
 
+decodes :: FilePath -> IO (Maybe [Plan])
+decodes file = do
+  plan <- decodeFile file
+  plans <- decodeFile file
+  return $ plans <|> fmap (:[]) plan
+
 call :: Args -> IO ()
 call Args{..} = do
   config <- decodeFile aConfig >>= maybeThrow (userError "Bad Config")
-  plan <- decodeFile aPlan >>= maybeThrow (userError "Bad Plan")
+  plans <- decodes aPlan >>= maybeThrow (userError "Bad Plan")
   env <- flowEnv config
-  forever $ runResourceT $ runFlowT env $ decide plan
+  void $ runConcurrently $ sequenceA $ flip map plans $ \plan ->
+    Concurrently $ forever $ runResourceT $ runFlowT env $ decide plan
 
 main :: IO ()
 main = execParser parser >>= call

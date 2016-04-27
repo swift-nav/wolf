@@ -1,26 +1,52 @@
 ---
-  start:
-    flow:
-      name: "HelloWorld"
-      version: "1.0"
-      queue: "hello-world-queue"
-      timeout: "300"
-  specs:
-    -
-      work:
-        name: "Hello"
+  -
+    start:
+      flow:
+        name: "HelloWorld"
         version: "1.0"
-        queue: "hello-queue"
-        timeout: "100"
-    -
-      sleep:
-        name: "Sleep"
-        timeout: "15"
-    -
-      work:
-        name: "World"
+        queue: "hello-world-queue"
+        timeout: "300"
+    specs:
+      -
+        work:
+          name: "Hello"
+          version: "1.0"
+          queue: "hello-queue"
+          timeout: "100"
+      -
+        sleep:
+          name: "Sleep"
+          timeout: "15"
+      -
+        work:
+          name: "World"
+          version: "1.0"
+          queue: "world-queue"
+          timeout: "100"
+    end: "continue"
+  -
+    start:
+      flow:
+        name: "ByeWorld"
         version: "1.0"
-        queue: "world-queue"
-        timeout: "100"
-  end: "continue"
+        queue: "bye-world-queue"
+        timeout: "300"
+    specs:
+      -
+        work:
+          name: "Bye"
+          version: "1.0"
+          queue: "bye-queue"
+          timeout: "100"
+      -
+        sleep:
+          name: "Sleep"
+          timeout: "15"
+      -
+        work:
+          name: "World"
+          version: "1.0"
+          queue: "world-queue"
+          timeout: "100"
+    end: "continue"
 

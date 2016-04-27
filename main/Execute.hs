@@ -3,6 +3,7 @@ module Execute
   ) where
 
 import BasicPrelude hiding ( readFile )
+import Control.Concurrent.Async
 import Control.Monad.Trans.Resource
 import Data.Text.IO
 import Data.Yaml hiding ( Parser )
@@ -25,16 +26,23 @@ parser =
     <> header   "execute: Execute a workflow"
     <> progDesc "Execute a workflow"
 
+decodes :: FilePath -> IO (Maybe [Plan])
+decodes file = do
+  plan <- decodeFile file
+  plans <- decodeFile file
+  return $ plans <|> fmap (:[]) plan
+
 call :: Args -> IO ()
 call Args{..} = do
   config <- decodeFile aConfig >>= maybeThrow (userError "Bad Config")
-  plan <- decodeFile aPlan >>= maybeThrow (userError "Bad Plan")
+  plans <- decodes aPlan >>= maybeThrow (userError "Bad Plan")
   input <- readFileMaybe aInput
   env <- flowEnv config
-  runResourceT $ runFlowT env $
-    execute (strtTask $ plnStart plan) input where
-      readFileMaybe =
-        maybe (return Nothing) ((>>= return . Just) . readFile)
+  void $ runConcurrently $ sequenceA $ flip map plans $ \plan ->
+    Concurrently $ runResourceT $ runFlowT env $
+      execute (strtTask $ plnStart plan) input where
+        readFileMaybe =
+          maybe (return Nothing) ((>>= return . Just) . readFile)
 
 main :: IO ()
 main = execParser parser >>= call
