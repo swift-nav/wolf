@@ -1,4 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 module Execute
   ( main
   ) where
@@ -27,15 +26,21 @@ parser =
     <> header   "execute: Execute a workflow"
     <> progDesc "Execute a workflow"
 
+decodes :: FilePath -> IO (Maybe [Plan])
+decodes file = do
+  plan <- decodeFile file
+  plans <- decodeFile file
+  return $ plans <|> fmap (:[]) plan
+
 call :: Args -> IO ()
 call Args{..} = do
   config <- decodeFile aConfig >>= maybeThrow (userError "Bad Config")
-  plan :: [Plan] <- decodeFile aPlan >>= maybeThrow (userError "Bad Plan")
+  plans <- decodes aPlan >>= maybeThrow (userError "Bad Plan")
   input <- readFileMaybe aInput
   env <- flowEnv config
-  void $ runConcurrently $ sequenceA $ flip map plan $ \p ->
+  void $ runConcurrently $ sequenceA $ flip map plans $ \plan ->
     Concurrently $ runResourceT $ runFlowT env $
-      execute (strtTask $ plnStart p) input where
+      execute (strtTask $ plnStart plan) input where
         readFileMaybe =
           maybe (return Nothing) ((>>= return . Just) . readFile)
 

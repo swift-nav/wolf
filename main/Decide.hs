@@ -1,4 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 module Decide
   ( main
   ) where
@@ -25,16 +24,19 @@ parser =
     <> header   "decide: Decide a workflow"
     <> progDesc "Decide a workflow"
 
+decodes :: FilePath -> IO (Maybe [Plan])
+decodes file = do
+  plan <- decodeFile file
+  plans <- decodeFile file
+  return $ plans <|> fmap (:[]) plan
+
 call :: Args -> IO ()
 call Args{..} = do
   config <- decodeFile aConfig >>= maybeThrow (userError "Bad Config")
-  plan :: [Plan] <- decodeFile aPlan >>= maybeThrow (userError "Bad Plan")
-  putStrLn "XXXXXXXXXXXXXXXXXX"
-  print plan
-  putStrLn "YYYYYYYYYYYYYYYYYY"
+  plans <- decodes aPlan >>= maybeThrow (userError "Bad Plan")
   env <- flowEnv config
-  void $ runConcurrently $ sequenceA $ flip map plan $ \p ->
-    Concurrently $ forever $ runResourceT $ runFlowT env $ decide p
+  void $ runConcurrently $ sequenceA $ flip map plans $ \plan ->
+    Concurrently $ forever $ runResourceT $ runFlowT env $ decide plan
 
 main :: IO ()
 main = execParser parser >>= call

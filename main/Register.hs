@@ -1,4 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 module Register
   ( main
   ) where
@@ -25,13 +24,19 @@ parser =
     <> header   "register: Register a workflow"
     <> progDesc "Register a workflow"
 
+decodes :: FilePath -> IO (Maybe [Plan])
+decodes file = do
+  plan <- decodeFile file
+  plans <- decodeFile file
+  return $ plans <|> fmap (:[]) plan
+
 call :: Args -> IO ()
 call Args{..} = do
   config' <- decodeFile aConfig >>= maybeThrow (userError "Bad Config")
-  plan :: [Plan] <- decodeFile aPlan >>= maybeThrow (userError "Bad Plan")
+  plans <- decodes aPlan >>= maybeThrow (userError "Bad Plan")
   env <- flowEnv config'
-  void $ runConcurrently $ sequenceA $ flip map plan $ \p ->
-    Concurrently $ runResourceT $ runFlowT env $ register p
+  void $ runConcurrently $ sequenceA $ flip map plans $ \plan ->
+    Concurrently $ runResourceT $ runFlowT env $ register plan
 
 main :: IO ()
 main = execParser parser >>= call
