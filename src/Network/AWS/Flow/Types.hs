@@ -1,3 +1,4 @@
+{-# OPTIONS  -fno-warn-orphans          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ConstraintKinds            #-}
 {-# LANGUAGE FlexibleInstances          #-}

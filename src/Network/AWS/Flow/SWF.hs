@@ -63,7 +63,7 @@ startWorkflowExecutionAction uid name version queue input = do
       sTaskList .~ Just (taskList queue) &
       sInput .~ input
 
-pollForActivityTaskAction :: MonadFlow m => Queue -> m (Token, Uid, Metadata)
+pollForActivityTaskAction :: MonadFlow m => Queue -> m (Maybe Token, Uid, Metadata)
 pollForActivityTaskAction queue = do
   timeout' <- asks fePollTimeout
   domain <- asks feDomain
@@ -97,7 +97,7 @@ pollForDecisionTaskAction queue = do
       pfdtMaximumPageSize .~ Just 100)
         $$ consume
     return
-      ( liftM (^. pfdtrsTaskToken) (headMay rs)
+      ( headMay rs >>= (^. pfdtrsTaskToken)
       , concatMap (^. pfdtrsEvents) rs)
 
 respondDecisionTaskCompletedAction :: MonadFlow m => Token -> [Decision] -> m ()
