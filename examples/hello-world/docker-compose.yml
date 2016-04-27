@@ -23,6 +23,16 @@ hello:
     - /tmp:/tmp
     - /var/run/docker.sock:/var/run/docker.sock
 
+bye:
+  extends:
+    file: docker-compose.yml
+    service: wolf
+  restart: always
+  command: wolf-act -c '/cfg/config.yaml' -q 'bye-queue' -x '/cfg/bye.yaml'
+  volumes:
+    - /tmp:/tmp
+    - /var/run/docker.sock:/var/run/docker.sock
+
 world:
   extends:
     file: docker-compose.yml

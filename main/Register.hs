@@ -1,8 +1,10 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Register
   ( main
   ) where
 
 import BasicPrelude
+import Control.Concurrent.Async
 import Control.Monad.Trans.Resource hiding ( register )
 import Data.Yaml hiding ( Parser )
 import Network.AWS.Flow
@@ -26,9 +28,10 @@ parser =
 call :: Args -> IO ()
 call Args{..} = do
   config' <- decodeFile aConfig >>= maybeThrow (userError "Bad Config")
-  plan <- decodeFile aPlan >>= maybeThrow (userError "Bad Plan")
+  plan :: [Plan] <- decodeFile aPlan >>= maybeThrow (userError "Bad Plan")
   env <- flowEnv config'
-  runResourceT $ runFlowT env $ register plan
+  void $ runConcurrently $ sequenceA $ flip map plan $ \p ->
+    Concurrently $ runResourceT $ runFlowT env $ register p
 
 main :: IO ()
 main = execParser parser >>= call

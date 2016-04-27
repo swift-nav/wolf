@@ -1,8 +1,10 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Execute
   ( main
   ) where
 
 import BasicPrelude hiding ( readFile )
+import Control.Concurrent.Async
 import Control.Monad.Trans.Resource
 import Data.Text.IO
 import Data.Yaml hiding ( Parser )
@@ -28,13 +30,14 @@ parser =
 call :: Args -> IO ()
 call Args{..} = do
   config <- decodeFile aConfig >>= maybeThrow (userError "Bad Config")
-  plan <- decodeFile aPlan >>= maybeThrow (userError "Bad Plan")
+  plan :: [Plan] <- decodeFile aPlan >>= maybeThrow (userError "Bad Plan")
   input <- readFileMaybe aInput
   env <- flowEnv config
-  runResourceT $ runFlowT env $
-    execute (strtTask $ plnStart plan) input where
-      readFileMaybe =
-        maybe (return Nothing) ((>>= return . Just) . readFile)
+  void $ runConcurrently $ sequenceA $ flip map plan $ \p ->
+    Concurrently $ runResourceT $ runFlowT env $
+      execute (strtTask $ plnStart p) input where
+        readFileMaybe =
+          maybe (return Nothing) ((>>= return . Just) . readFile)
 
 main :: IO ()
 main = execParser parser >>= call

@@ -17,5 +17,6 @@ stack exec wolf-execute -- -c 'cfg/config.yaml' -p 'cfg/plan.yaml' -i 'cfg/execu
 
 stack exec wolf-decide -- -c 'cfg/config.yaml' -p 'cfg/plan.yaml' &
 stack exec wolf-act -- -c 'cfg/config.yaml' -q 'hello-queue' -x 'cfg/hello.yaml' --containerless hello-world &
+stack exec wolf-act -- -c 'cfg/config.yaml' -q 'bye-queue' -x 'cfg/bye.yaml' --containerless hello-world &
 stack exec wolf-act -- -c 'cfg/config.yaml' -q 'world-queue' -x 'cfg/world.yaml' --containerless hello-world &
 wait

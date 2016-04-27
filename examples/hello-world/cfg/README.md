@@ -6,6 +6,8 @@ example workflow.
 + `config.yaml` Contains general configuration for wolf tooling:
   credentials, timeouts, region, bucket name and prefix, etc.
 
++ `bye.yaml` Contains Docker parameters to Bye container.
+
 + `execute.json` Contains intial input to Hello World workflow.
 
 + `hello.yaml` Contains Docker parameters to Hello container.

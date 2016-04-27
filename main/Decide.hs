@@ -29,6 +29,9 @@ call :: Args -> IO ()
 call Args{..} = do
   config <- decodeFile aConfig >>= maybeThrow (userError "Bad Config")
   plan :: [Plan] <- decodeFile aPlan >>= maybeThrow (userError "Bad Plan")
+  putStrLn "XXXXXXXXXXXXXXXXXX"
+  print plan
+  putStrLn "YYYYYYYYYYYYYYYYYY"
   env <- flowEnv config
   void $ runConcurrently $ sequenceA $ flip map plan $ \p ->
     Concurrently $ forever $ runResourceT $ runFlowT env $ decide p
