@@ -37,7 +37,6 @@ args = Args        <$>
   containerless    <*>
   gzip
 
-
 parser :: ParserInfo Args
 parser =
   info ( helper <*> args ) $ fullDesc

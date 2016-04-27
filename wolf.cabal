@@ -122,7 +122,8 @@ executable wolf-decide
   other-modules:       Options
   hs-source-dirs:      main
   ghc-options:         -Wall -main-is Decide
-  build-depends:       base
+  build-depends:       async
+                     , base
                      , basic-prelude
                      , optparse-applicative
                      , resourcet
