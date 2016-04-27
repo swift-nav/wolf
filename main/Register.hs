@@ -24,16 +24,16 @@ parser =
     <> header   "register: Register a workflow"
     <> progDesc "Register a workflow"
 
-decodes :: FilePath -> IO (Maybe [Plan])
-decodes file = do
+decodePlans :: FilePath -> IO (Maybe [Plan])
+decodePlans file = do
   plan <- decodeFile file
   plans <- decodeFile file
-  return $ plans <|> fmap (:[]) plan
+  return $ plans <|> pure <$> plan
 
 call :: Args -> IO ()
 call Args{..} = do
   config' <- decodeFile aConfig >>= maybeThrow (userError "Bad Config")
-  plans <- decodes aPlan >>= maybeThrow (userError "Bad Plan")
+  plans <- decodePlans aPlan >>= maybeThrow (userError "Bad Plan")
   env <- flowEnv config'
   void $ runConcurrently $ sequenceA $ flip map plans $ \plan ->
     Concurrently $ runResourceT $ runFlowT env $ register plan
