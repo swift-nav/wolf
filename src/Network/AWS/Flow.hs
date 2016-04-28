@@ -74,6 +74,15 @@ execute Task{..} input = do
   logInfo' $ sformat ("event=execute uid=" % stext) uid
   startWorkflowExecutionAction uid tskName tskVersion tskQueue input
 
+serializeError :: MonadFlow m => Error -> m ()
+serializeError = \case
+  e@(SerializeError s) ->
+    unless check $ throwM e where
+      check =
+        s ^. serializeStatus  == ok200 &&
+        s ^. serializeAbbrev  == "SWF"
+  e -> throwM e
+
 actException :: MonadFlow m => Token -> SomeException -> m ()
 actException token e = do
   logError' "event=act-exception-begin"
@@ -82,32 +91,34 @@ actException token e = do
   respondActivityTaskFailedAction token
 
 act :: MonadFlow m => Queue -> (Uid -> Metadata -> [Blob] -> m (Metadata, [Artifact])) -> m ()
-act queue action = do
-  logInfo' "event=act"
-  (token', uid, input) <- pollForActivityTaskAction queue
-  token <- maybeThrow (userError "No Token") token'
-  logInfo' $ sformat ("event=act-begin uid=" % stext) uid
-  maybe_ input $ logDebug' . sformat ("event=act-input " % stext)
-  keys <- listObjectsAction uid
-  unless (null keys) $ logInfo' $ sformat ("event=list-blobs uid=" % stext) uid
-  blobs <- forM keys $ getObjectAction uid
-  unless (null blobs) $ logInfo' $ sformat ("event=blobs uid=" % stext) uid
-  handle (actException token) $ do
-    (output, artifacts) <- action uid input blobs
-    maybe_ output $ logDebug' . sformat ("event=act-output " % stext)
-    logInfo' $ sformat ("event=act-finish uid=" % stext) uid
-    forM_ artifacts $ putObjectAction uid
-    unless (null artifacts) $ logInfo' $ sformat ("event=artifacts uid=" % stext) uid
-    respondActivityTaskCompletedAction token output
+act queue action =
+  handle serializeError $ do
+    logInfo' "event=act"
+    (token', uid, input) <- pollForActivityTaskAction queue
+    token <- maybeThrow (userError "No Token") token'
+    logInfo' $ sformat ("event=act-begin uid=" % stext) uid
+    maybe_ input $ logDebug' . sformat ("event=act-input " % stext)
+    keys <- listObjectsAction uid
+    unless (null keys) $ logInfo' $ sformat ("event=list-blobs uid=" % stext) uid
+    blobs <- forM keys $ getObjectAction uid
+    unless (null blobs) $ logInfo' $ sformat ("event=blobs uid=" % stext) uid
+    handle (actException token) $ do
+      (output, artifacts) <- action uid input blobs
+      maybe_ output $ logDebug' . sformat ("event=act-output " % stext)
+      logInfo' $ sformat ("event=act-finish uid=" % stext) uid
+      forM_ artifacts $ putObjectAction uid
+      unless (null artifacts) $ logInfo' $ sformat ("event=artifacts uid=" % stext) uid
+      respondActivityTaskCompletedAction token output
 
 decide :: MonadFlow m => Plan -> m ()
-decide plan@Plan{..} = do
-  logInfo' "event=decide"
-  (token', events) <- pollForDecisionTaskAction (tskQueue $ strtTask plnStart)
-  token <- maybeThrow (userError "No Token") token'
-  logger <- asks feLogger
-  decisions <- runDecide logger plan events select
-  respondDecisionTaskCompletedAction token decisions
+decide plan@Plan{..} =
+  handle serializeError $ do
+    logInfo' "event=decide"
+    (token', events) <- pollForDecisionTaskAction (tskQueue $ strtTask plnStart)
+    token <- maybeThrow (userError "No Token") token'
+    logger <- asks feLogger
+    decisions <- runDecide logger plan events select
+    respondDecisionTaskCompletedAction token decisions
 
 -- Decisions
 
