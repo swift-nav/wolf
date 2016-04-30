@@ -6,9 +6,12 @@ module Options
   , queue
   , containerless
   , gzip
+  , logLevel
   ) where
 
 import BasicPrelude
+import Control.Monad.Logger
+import Data.Text ( pack )
 import Options.Applicative
 
 configFile :: Parser String
@@ -64,3 +67,15 @@ gzip =
     $  long "gzip"
     <> help "GZIP contents of artifacts"
 
+logLevel :: Parser LogLevel
+logLevel =
+  fmap ( toLogLevel . pack ) $
+    strOption
+      $  long    "log-level"
+      <> metavar "LEVEL"
+      <> help    "Minimum level of logging" where
+        toLogLevel "debug" = LevelDebug
+        toLogLevel "info"  = LevelInfo
+        toLogLevel "warn"  = LevelWarn
+        toLogLevel "error" = LevelError
+        toLogLevel s       = LevelOther s
