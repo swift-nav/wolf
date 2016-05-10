@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-module Act
+module Act2
   ( main
   ) where
 
