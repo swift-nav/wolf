@@ -34,6 +34,7 @@ import           Network.AWS.Flow.Prelude hiding ( ByteString, Metadata, handle 
 
 import           Control.Monad.Catch
 import qualified Data.HashMap.Strict as Map
+import           Data.Typeable
 import           Formatting
 import           Network.AWS.SWF
 import           Network.HTTP.Types
@@ -86,6 +87,7 @@ serializeError = \case
 actException :: MonadFlow m => Token -> SomeException -> m ()
 actException token e = do
   logError' "event=act-exception-begin"
+  logError' $ show $ typeOf e
   logError' $ show e
   logError' "event=act-exception-finish"
   respondActivityTaskFailedAction token
