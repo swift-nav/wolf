@@ -6,6 +6,7 @@ module Network.AWS.Flow.SWF
   , pollForActivityTaskAction
   , respondActivityTaskCompletedAction
   , respondActivityTaskFailedAction
+  , respondActivityTaskCanceledAction
   , pollForDecisionTaskAction
   , respondDecisionTaskCompletedAction
   , scheduleActivityTaskDecision
@@ -86,6 +87,12 @@ respondActivityTaskFailedAction token = do
   timeout' <- asks feTimeout
   void $ timeout timeout' $
     send $ respondActivityTaskFailed token
+
+respondActivityTaskCanceledAction :: MonadFlow m => Token -> m ()
+respondActivityTaskCanceledAction token = do
+  timeout' <- asks feTimeout
+  void $ timeout timeout' $
+    send $ respondActivityTaskCanceled token
 
 pollForDecisionTaskAction :: MonadFlow m => Queue -> m (Maybe Token, [HistoryEvent])
 pollForDecisionTaskAction queue = do

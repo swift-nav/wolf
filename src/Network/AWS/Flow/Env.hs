@@ -10,6 +10,6 @@ import System.IO
 
 flowEnv :: FlowConfig -> IO FlowEnv
 flowEnv FlowConfig{..} = do
-  logger <- newLogger Debug stderr
+  logger <- newLogger Info stderr
   env <- newEnv fcRegion fcCredentials <&> envLogger .~ logger
   return $ FlowEnv logStrLn env (fromIntegral fcTimeout) (fromIntegral fcPollTimeout) fcDomain fcBucket fcPrefix

@@ -33,12 +33,15 @@ import           Network.AWS.Flow.Uid
 import           Network.AWS.Flow.Prelude hiding ( ByteString, Metadata, handle )
 
 import           Control.Monad.Catch
+import           Data.Char
 import qualified Data.HashMap.Strict as Map
+import           Data.Text ( pack )
 import           Data.Typeable
-import           Formatting
+import           Formatting hiding ( string )
 import           Network.AWS.SWF
 import           Network.HTTP.Types
 import           Safe
+import           Text.Regex.Applicative
 
 -- Interface
 
@@ -84,13 +87,18 @@ serializeError = \case
         s ^. serializeAbbrev  == "SWF"
   e -> throwM e
 
+exitCode :: RE Char Int
+exitCode =
+  many anySym *> string "exit status: " *> num <* many anySym where
+    num = read . pack <$> many (psym isDigit)
+
 actException :: MonadFlow m => Token -> SomeException -> m ()
 actException token e = do
-  logError' "event=act-exception-begin"
-  logError' $ show $ typeOf e
-  logError' $ show e
-  logError' "event=act-exception-finish"
-  respondActivityTaskFailedAction token
+  logError' $ sformat ("event=act-exception-type " % stext) $ show $ typeOf e
+  logError' $ sformat ("event=act-exception " % stext) $ show e
+  maybe' ((textToString $ show e) =~ exitCode) (respondActivityTaskFailedAction token) $ \code -> do
+    if code == 255 then respondActivityTaskCanceledAction token else
+      respondActivityTaskFailedAction token
 
 act :: MonadFlow m => Queue -> (Uid -> Metadata -> [Blob] -> m (Metadata, [Artifact])) -> m ()
 act queue action =
