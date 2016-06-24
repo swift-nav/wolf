@@ -164,11 +164,13 @@ select :: MonadDecide m => m [Decision]
 select = do
   event <- nextEvent [ WorkflowExecutionStarted
                      , ActivityTaskCompleted
+                     , ActivityTaskCanceled
                      , TimerFired
                      , StartChildWorkflowExecutionInitiated ]
   case event ^. heEventType of
     WorkflowExecutionStarted             -> start event
     ActivityTaskCompleted                -> completed event
+    ActivityTaskCanceled                 -> canceled event
     TimerFired                           -> timer event
     StartChildWorkflowExecutionInitiated -> child
     _                                    -> throwM (userError "Unknown Select Event")
@@ -193,6 +195,11 @@ completed event = do
     return (attrs ^. atceaResult, attrs' ^. atseaActivityType ^. atName)
   next <- workNext name
   schedule input next
+
+canceled :: MonadDecide m => HistoryEvent -> m [Decision]
+canceled _event = do
+  logInfo' "event=canceled"
+  return [cancelWorkflowExecutionDecision]
 
 timer :: MonadDecide m => HistoryEvent -> m [Decision]
 timer event = do

@@ -11,6 +11,7 @@ module Network.AWS.Flow.SWF
   , respondDecisionTaskCompletedAction
   , scheduleActivityTaskDecision
   , completeWorkflowExecutionDecision
+  , cancelWorkflowExecutionDecision
   , startTimerDecision
   , continueAsNewWorkflowExecutionDecision
   , startChildWorkflowExecutionDecision
@@ -130,6 +131,12 @@ completeWorkflowExecutionDecision result =
     dCompleteWorkflowExecutionDecisionAttributes .~ Just attrs where
       attrs = completeWorkflowExecutionDecisionAttributes &
         cwedaResult .~ result
+
+cancelWorkflowExecutionDecision :: Decision
+cancelWorkflowExecutionDecision =
+  decision CancelWorkflowExecution &
+    dCancelWorkflowExecutionDecisionAttributes .~ Just attrs where
+      attrs = cancelWorkflowExecutionDecisionAttributes
 
 startTimerDecision :: Uid -> Name -> Timeout -> Decision
 startTimerDecision uid name t =
