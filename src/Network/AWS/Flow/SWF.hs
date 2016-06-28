@@ -11,6 +11,7 @@ module Network.AWS.Flow.SWF
   , respondDecisionTaskCompletedAction
   , scheduleActivityTaskDecision
   , completeWorkflowExecutionDecision
+  , failWorkflowExecutionDecision
   , cancelWorkflowExecutionDecision
   , startTimerDecision
   , continueAsNewWorkflowExecutionDecision
@@ -131,6 +132,12 @@ completeWorkflowExecutionDecision result =
     dCompleteWorkflowExecutionDecisionAttributes .~ Just attrs where
       attrs = completeWorkflowExecutionDecisionAttributes &
         cwedaResult .~ result
+
+failWorkflowExecutionDecision :: Decision
+failWorkflowExecutionDecision =
+  decision FailWorkflowExecution &
+    dFailWorkflowExecutionDecisionAttributes .~ Just attrs where
+      attrs = failWorkflowExecutionDecisionAttributes
 
 cancelWorkflowExecutionDecision :: Decision
 cancelWorkflowExecutionDecision =
