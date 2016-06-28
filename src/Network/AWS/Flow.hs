@@ -33,11 +33,15 @@ import           Network.AWS.Flow.Uid
 import           Network.AWS.Flow.Prelude hiding ( ByteString, Metadata, handle )
 
 import           Control.Monad.Catch
+import           Data.Char
 import qualified Data.HashMap.Strict as Map
-import           Formatting
+import           Data.Text ( pack )
+import           Data.Typeable
+import           Formatting hiding ( string )
 import           Network.AWS.SWF
 import           Network.HTTP.Types
 import           Safe
+import           Text.Regex.Applicative
 
 -- Interface
 
@@ -83,12 +87,18 @@ serializeError = \case
         s ^. serializeAbbrev  == "SWF"
   e -> throwM e
 
+exitCode :: RE Char Int
+exitCode =
+  many anySym *> string "exit status: " *> num <* many anySym where
+    num = read . pack <$> many (psym isDigit)
+
 actException :: MonadFlow m => Token -> SomeException -> m ()
 actException token e = do
-  logError' "event=act-exception-begin"
-  logError' $ show e
-  logError' "event=act-exception-finish"
-  respondActivityTaskFailedAction token
+  logError' $ sformat ("event=act-exception-type " % stext) $ show $ typeOf e
+  logError' $ sformat ("event=act-exception " % stext) $ show e
+  maybe' ((textToString $ show e) =~ exitCode) (respondActivityTaskFailedAction token) $ \code -> do
+    if code == 255 then respondActivityTaskCanceledAction token else
+      respondActivityTaskFailedAction token
 
 act :: MonadFlow m => Queue -> (Uid -> Metadata -> [Blob] -> m (Metadata, [Artifact])) -> m ()
 act queue action =
@@ -154,11 +164,15 @@ select :: MonadDecide m => m [Decision]
 select = do
   event <- nextEvent [ WorkflowExecutionStarted
                      , ActivityTaskCompleted
+                     , ActivityTaskFailed
+                     , ActivityTaskCanceled
                      , TimerFired
                      , StartChildWorkflowExecutionInitiated ]
   case event ^. heEventType of
     WorkflowExecutionStarted             -> start event
     ActivityTaskCompleted                -> completed event
+    ActivityTaskFailed                   -> failed event
+    ActivityTaskCanceled                 -> canceled event
     TimerFired                           -> timer event
     StartChildWorkflowExecutionInitiated -> child
     _                                    -> throwM (userError "Unknown Select Event")
@@ -183,6 +197,16 @@ completed event = do
     return (attrs ^. atceaResult, attrs' ^. atseaActivityType ^. atName)
   next <- workNext name
   schedule input next
+
+failed :: MonadDecide m => HistoryEvent -> m [Decision]
+failed _event = do
+  logInfo' "event=failed"
+  return [failWorkflowExecutionDecision]
+
+canceled :: MonadDecide m => HistoryEvent -> m [Decision]
+canceled _event = do
+  logInfo' "event=canceled"
+  return [cancelWorkflowExecutionDecision]
 
 timer :: MonadDecide m => HistoryEvent -> m [Decision]
 timer event = do

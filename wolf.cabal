@@ -53,6 +53,8 @@ library
                      , mtl
                      , mtl-compat
                      , optparse-applicative
+                     , regex-applicative
+                     , regex-compat
                      , resourcet
                      , safe
                      , text

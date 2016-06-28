@@ -6,10 +6,13 @@ module Network.AWS.Flow.SWF
   , pollForActivityTaskAction
   , respondActivityTaskCompletedAction
   , respondActivityTaskFailedAction
+  , respondActivityTaskCanceledAction
   , pollForDecisionTaskAction
   , respondDecisionTaskCompletedAction
   , scheduleActivityTaskDecision
   , completeWorkflowExecutionDecision
+  , failWorkflowExecutionDecision
+  , cancelWorkflowExecutionDecision
   , startTimerDecision
   , continueAsNewWorkflowExecutionDecision
   , startChildWorkflowExecutionDecision
@@ -87,6 +90,12 @@ respondActivityTaskFailedAction token = do
   void $ timeout timeout' $
     send $ respondActivityTaskFailed token
 
+respondActivityTaskCanceledAction :: MonadFlow m => Token -> m ()
+respondActivityTaskCanceledAction token = do
+  timeout' <- asks feTimeout
+  void $ timeout timeout' $
+    send $ respondActivityTaskCanceled token
+
 pollForDecisionTaskAction :: MonadFlow m => Queue -> m (Maybe Token, [HistoryEvent])
 pollForDecisionTaskAction queue = do
   timeout' <- asks fePollTimeout
@@ -123,6 +132,18 @@ completeWorkflowExecutionDecision result =
     dCompleteWorkflowExecutionDecisionAttributes .~ Just attrs where
       attrs = completeWorkflowExecutionDecisionAttributes &
         cwedaResult .~ result
+
+failWorkflowExecutionDecision :: Decision
+failWorkflowExecutionDecision =
+  decision FailWorkflowExecution &
+    dFailWorkflowExecutionDecisionAttributes .~ Just attrs where
+      attrs = failWorkflowExecutionDecisionAttributes
+
+cancelWorkflowExecutionDecision :: Decision
+cancelWorkflowExecutionDecision =
+  decision CancelWorkflowExecution &
+    dCancelWorkflowExecutionDecisionAttributes .~ Just attrs where
+      attrs = cancelWorkflowExecutionDecisionAttributes
 
 startTimerDecision :: Uid -> Name -> Timeout -> Decision
 startTimerDecision uid name t =
