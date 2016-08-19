@@ -100,7 +100,7 @@ actException token e = do
     if code == 255 then respondActivityTaskCanceledAction token else
       respondActivityTaskFailedAction token
 
-act :: MonadFlow m => Queue -> (Uid -> Metadata -> [Blob] -> m (Metadata, [Artifact])) -> m ()
+act :: MonadFlow m => Queue -> (Uid -> Metadata -> [Blob] -> m (Metadata, [Artifact], Maybe SomeException)) -> m ()
 act queue action =
   handle serializeError $ do
     logInfo' "event=act"
@@ -113,11 +113,12 @@ act queue action =
     blobs <- forM keys $ getObjectAction uid
     unless (null blobs) $ logInfo' $ sformat ("event=blobs uid=" % stext) uid
     handle (actException token) $ do
-      (output, artifacts) <- action uid input blobs
+      (output, artifacts, e) <- action uid input blobs
       maybe_ output $ logDebug' . sformat ("event=act-output " % stext)
       logInfo' $ sformat ("event=act-finish uid=" % stext) uid
       forM_ artifacts $ putObjectAction uid
       unless (null artifacts) $ logInfo' $ sformat ("event=artifacts uid=" % stext) uid
+      maybe_ e throwM
       respondActivityTaskCompletedAction token output
 
 decide :: MonadFlow m => Plan -> m ()

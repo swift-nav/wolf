@@ -74,7 +74,7 @@ instance ToJSON Control where
 encodeText :: ToJSON a => a -> Text
 encodeText = toStrict . toLazyText . encodeToTextBuilder . toJSON
 
-exec :: MonadIO m => Args -> Container -> Uid -> Metadata -> [Blob] -> m (Metadata, [Artifact])
+exec :: MonadIO m => Args -> Container -> Uid -> Metadata -> [Blob] -> m (Metadata, [Artifact], Maybe SomeException)
 exec Args{..} container uid metadata blobs =
   shelly $ withDir $ \dir dataDir storeDir -> do
     control $ dataDir </> pack "control.json"
@@ -83,7 +83,7 @@ exec Args{..} container uid metadata blobs =
     maybe (docker dataDir storeDir container) (bash dir container) aContainerless
     result <- dataOutput $ dataDir </> pack "output.json"
     artifacts <- storeOutput $ storeDir </> pack "output"
-    return (result, artifacts) where
+    return (result, artifacts, Nothing) where
       withDir action =
         withTmpDir $ \dir -> do
           mkdir $ dir </> pack "data"
