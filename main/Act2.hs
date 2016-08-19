@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts    #-}
 module Act2
   ( main
   ) where
@@ -50,16 +51,19 @@ instance ToJSON Control where
 encodeText :: ToJSON a => a -> Text
 encodeText = toStrict . toLazyText . encodeToTextBuilder . toJSON
 
-exec :: MonadIO m => Text -> Uid -> Metadata -> [Blob] -> m (Metadata, [Artifact])
+handler :: MonadBaseControl IO m => m () -> m (Maybe SomeException)
+handler a = handle (return . Just) $ a >> return Nothing
+
+exec :: MonadIO m => Text -> Uid -> Metadata -> [Blob] -> m (Metadata, [Artifact], Maybe SomeException)
 exec cmdline uid metadata blobs =
   shelly $ withDir $ \dir dataDir storeDir -> do
     control $ dataDir </> pack "control.json"
     storeInput $ storeDir </> pack "input"
     dataInput $ dataDir </> pack "input.json"
-    bash dir
+    e <- bash dir
     result <- dataOutput $ dataDir </> pack "output.json"
     artifacts <- storeOutput $ storeDir </> pack "output"
-    return (result, artifacts) where
+    return (result, artifacts, e) where
       withDir action =
         withTmpDir $ \dir -> do
           mkdir $ dir </> pack "data"
@@ -93,12 +97,13 @@ exec cmdline uid metadata blobs =
       storeOutput dir = do
         artifacts <- findWhen test_f dir
         forM artifacts $ readArtifact dir
-      bash dir = do
-        bashDir <- pwd
-        files <- ls bashDir
-        forM_ files $ flip cp_r dir
-        cd dir
-        maybe (return ()) (uncurry $ run_ . fromText) $ uncons $ words cmdline
+      bash dir =
+        handler $ do
+          bashDir <- pwd
+          files <- ls bashDir
+          forM_ files $ flip cp_r dir
+          cd dir
+          maybe (return ()) (uncurry $ run_ . fromText) $ uncons $ words cmdline
 
 call :: Args -> IO ()
 call Args{..} = do

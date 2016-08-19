@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts    #-}
 module Act
   ( main
   ) where
@@ -74,16 +75,19 @@ instance ToJSON Control where
 encodeText :: ToJSON a => a -> Text
 encodeText = toStrict . toLazyText . encodeToTextBuilder . toJSON
 
-exec :: MonadIO m => Args -> Container -> Uid -> Metadata -> [Blob] -> m (Metadata, [Artifact])
+handler :: MonadBaseControl IO m => m () -> m (Maybe SomeException)
+handler a = handle (return . Just) $ a >> return Nothing
+
+exec :: MonadIO m => Args -> Container -> Uid -> Metadata -> [Blob] -> m (Metadata, [Artifact], Maybe SomeException)
 exec Args{..} container uid metadata blobs =
   shelly $ withDir $ \dir dataDir storeDir -> do
     control $ dataDir </> pack "control.json"
     storeInput $ storeDir </> pack "input"
     dataInput $ dataDir </> pack "input.json"
-    maybe (docker dataDir storeDir container) (bash dir container) aContainerless
+    e <- maybe (docker dataDir storeDir container) (bash dir container) aContainerless
     result <- dataOutput $ dataDir </> pack "output.json"
     artifacts <- storeOutput $ storeDir </> pack "output"
-    return (result, artifacts) where
+    return (result, artifacts, e) where
       withDir action =
         withTmpDir $ \dir -> do
           mkdir $ dir </> pack "data"
@@ -129,25 +133,27 @@ exec Args{..} container uid metadata blobs =
       storeOutput dir = do
         artifacts <- findWhen test_f dir
         forM artifacts $ readArtifact dir
-      docker dataDir storeDir Container{..} = do
-        devices <- forM cDevices $ \device ->
-          liftM strip $ run "readlink" ["-f", device]
-        run_ "docker" $ concat
-          [["run"]
-          , concatMap (("--device" :)  . return) devices
-          , concatMap (("--env"    :)  . return) cEnvironment
-          , concatMap (("--link"    :) . return) cLink
-          , concatMap (("--volume" :)  . return) $
-              toTextIgnore dataDir  <> ":/app/data"  :
-              toTextIgnore storeDir <> ":/app/store" : cVolumes
-          , [cImage]
-          , words cCommand
-          ]
-      bash dir Container{..} bashDir = do
-        files <- ls $ fromText $ pack bashDir
-        forM_ files $ flip cp_r dir
-        cd dir
-        maybe (return ()) (uncurry $ run_ . fromText) $ uncons $ words cCommand
+      docker dataDir storeDir Container{..} =
+        handler $ do
+          devices <- forM cDevices $ \device ->
+            liftM strip $ run "readlink" ["-f", device]
+          run_ "docker" $ concat
+            [["run"]
+            , concatMap (("--device" :)  . return) devices
+            , concatMap (("--env"    :)  . return) cEnvironment
+            , concatMap (("--link"    :) . return) cLink
+            , concatMap (("--volume" :)  . return) $
+                toTextIgnore dataDir  <> ":/app/data"  :
+                toTextIgnore storeDir <> ":/app/store" : cVolumes
+            , [cImage]
+            , words cCommand
+            ]
+      bash dir Container{..} bashDir =
+        handler $ do
+          files <- ls $ fromText $ pack bashDir
+          forM_ files $ flip cp_r dir
+          cd dir
+          maybe (return ()) (uncurry $ run_ . fromText) $ uncons $ words cCommand
 
 call :: Args -> IO ()
 call Args{..} = do

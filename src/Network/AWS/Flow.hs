@@ -36,7 +36,6 @@ import           Control.Monad.Catch
 import           Data.Char
 import qualified Data.HashMap.Strict as Map
 import           Data.Text ( pack )
-import           Data.Typeable
 import           Formatting hiding ( string )
 import           Network.AWS.SWF
 import           Network.HTTP.Types
@@ -94,13 +93,12 @@ exitCode =
 
 actException :: MonadFlow m => Token -> SomeException -> m ()
 actException token e = do
-  logError' $ sformat ("event=act-exception-type " % stext) $ show $ typeOf e
   logError' $ sformat ("event=act-exception " % stext) $ show e
   maybe' ((textToString $ show e) =~ exitCode) (respondActivityTaskFailedAction token) $ \code -> do
     if code == 255 then respondActivityTaskCanceledAction token else
       respondActivityTaskFailedAction token
 
-act :: MonadFlow m => Queue -> (Uid -> Metadata -> [Blob] -> m (Metadata, [Artifact])) -> m ()
+act :: MonadFlow m => Queue -> (Uid -> Metadata -> [Blob] -> m (Metadata, [Artifact], Maybe SomeException)) -> m ()
 act queue action =
   handle serializeError $ do
     logInfo' "event=act"
@@ -112,13 +110,12 @@ act queue action =
     unless (null keys) $ logInfo' $ sformat ("event=list-blobs uid=" % stext) uid
     blobs <- forM keys $ getObjectAction uid
     unless (null blobs) $ logInfo' $ sformat ("event=blobs uid=" % stext) uid
-    handle (actException token) $ do
-      (output, artifacts) <- action uid input blobs
-      maybe_ output $ logDebug' . sformat ("event=act-output " % stext)
-      logInfo' $ sformat ("event=act-finish uid=" % stext) uid
-      forM_ artifacts $ putObjectAction uid
-      unless (null artifacts) $ logInfo' $ sformat ("event=artifacts uid=" % stext) uid
-      respondActivityTaskCompletedAction token output
+    (output, artifacts, e) <- action uid input blobs
+    maybe_ output $ logDebug' . sformat ("event=act-output " % stext)
+    logInfo' $ sformat ("event=act-finish uid=" % stext) uid
+    forM_ artifacts $ putObjectAction uid
+    unless (null artifacts) $ logInfo' $ sformat ("event=artifacts uid=" % stext) uid
+    maybe (respondActivityTaskCompletedAction token output) (actException token) e
 
 decide :: MonadFlow m => Plan -> m ()
 decide plan@Plan{..} =
