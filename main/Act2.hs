@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts    #-}
 module Act2
   ( main
   ) where
@@ -50,10 +51,8 @@ instance ToJSON Control where
 encodeText :: ToJSON a => a -> Text
 encodeText = toStrict . toLazyText . encodeToTextBuilder . toJSON
 
-handler :: MonadIO m => SomeException -> m (Maybe SomeException)
-handler e = do
-  putStrLn "XXXXXXXXXXXXXXXXXXXX"
-  return $ Just e
+handler :: MonadBaseControl IO m => m () -> m (Maybe SomeException)
+handler a = handle (return . Just) $ a >> return Nothing
 
 exec :: MonadIO m => Text -> Uid -> Metadata -> [Blob] -> m (Metadata, [Artifact], Maybe SomeException)
 exec cmdline uid metadata blobs =
@@ -99,13 +98,12 @@ exec cmdline uid metadata blobs =
         artifacts <- findWhen test_f dir
         forM artifacts $ readArtifact dir
       bash dir =
-        handle handler $ do
+        handler $ do
           bashDir <- pwd
           files <- ls bashDir
           forM_ files $ flip cp_r dir
           cd dir
           maybe (return ()) (uncurry $ run_ . fromText) $ uncons $ words cmdline
-          return Nothing
 
 call :: Args -> IO ()
 call Args{..} = do
