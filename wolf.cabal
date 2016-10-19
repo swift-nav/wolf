@@ -170,6 +170,7 @@ executable wolf-act2
   ghc-options:         -Wall -main-is Act2
   build-depends:       aeson
                      , amazonka-core
+                     , async
                      , base
                      , basic-prelude
                      , bytestring
@@ -178,6 +179,7 @@ executable wolf-act2
                      , shelly
                      , system-filepath
                      , text
+                     , time
                      , transformers
                      , wolf
                      , yaml
