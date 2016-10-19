@@ -16,7 +16,7 @@ stack exec wolf-register -- -c 'cfg/config.yaml' -p 'cfg/plan.yaml'
 stack exec wolf-execute -- -c 'cfg/config.yaml' -p 'cfg/plan.yaml' -i 'cfg/execute.json'
 
 stack exec wolf-decide -- -c 'cfg/config.yaml' -p 'cfg/plan.yaml' &
-(cd hello-world && stack exec wolf-act2 -- -c '../cfg/config.yaml' -q 'hello-queue' --command-line 'python hello.py') &
-(cd hello-world && stack exec wolf-act2 -- -c '../cfg/config.yaml' -q 'bye-queue' --command-line 'python bye.py') &
-(cd hello-world && stack exec wolf-act2 -- -c '../cfg/config.yaml' -q 'world-queue' --command-line 'python world.py') &
+(cd hello-world && stack exec wolf-act2 -- -c '../cfg/config.yaml' -q 'hello-queue' --command-line 'python hello.py' --timeout 300) &
+(cd hello-world && stack exec wolf-act2 -- -c '../cfg/config.yaml' -q 'bye-queue' --command-line 'python bye.py' --timeout 300) &
+(cd hello-world && stack exec wolf-act2 -- -c '../cfg/config.yaml' -q 'world-queue' --command-line 'python world.py' --timeout 300) &
 wait
