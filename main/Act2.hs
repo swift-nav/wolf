@@ -6,6 +6,8 @@ module Act2
 
 import           BasicPrelude hiding ( ByteString, (</>), (<.>), hash, length, readFile, find )
 import           Codec.Compression.GZip
+import           Control.Concurrent
+import           Control.Concurrent.Async
 import           Control.Monad.Trans.Resource
 import           Data.Aeson.Encode
 import           Data.ByteString ( length )
@@ -13,6 +15,7 @@ import qualified Data.ByteString.Lazy as BL
 import           Data.Text ( pack, strip )
 import           Data.Text.Lazy ( toStrict )
 import           Data.Text.Lazy.Builder hiding ( fromText )
+import           Data.Time
 import           Data.Yaml hiding ( Parser )
 import           Filesystem.Path ( (<.>), dropExtension )
 import           Network.AWS.Data.Crypto
@@ -25,13 +28,15 @@ data Args = Args
   { aConfig      :: FilePath
   , aQueue       :: Queue
   , aCommandLine :: Text
+  , aTimeout     :: Int
   } deriving ( Eq, Read, Show )
 
 args :: Parser Args
 args = Args              <$>
   configFile             <*>
   (pack <$> queue)       <*>
-  (pack <$> commandLine)
+  (pack <$> commandLine) <*>
+  timeout
 
 parser :: ParserInfo Args
 parser =
@@ -105,12 +110,24 @@ exec cmdline uid metadata blobs =
           cd dir
           maybe (return ()) (uncurry $ run_ . fromText) $ uncons $ words cmdline
 
+watchdog :: MVar UTCTime -> Int -> IO ()
+watchdog timestamp duration =
+  forever $ do
+    now <- getCurrentTime
+    now' <- readMVar timestamp
+    when (diffUTCTime now now' > fromIntegral duration) $
+      throwIO $ userError "watchdog expired"
+    threadDelay 1000000
+
 call :: Args -> IO ()
 call Args{..} = do
   config <- decodeFile aConfig >>= maybeThrow (userError "Bad Config")
   env <- flowEnv config
-  forever $ runResourceT $ runFlowT env $
-    act aQueue $ exec aCommandLine
+  timestamp <- newEmptyMVar
+  void $ concurrently (watchdog timestamp aTimeout) $ do
+    forever $ runResourceT $ runFlowT env $ do
+      liftIO $ getCurrentTime >>= putMVar timestamp
+      act aQueue $ exec aCommandLine
 
 main :: IO ()
 main = execParser parser >>= call

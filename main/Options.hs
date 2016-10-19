@@ -7,6 +7,7 @@ module Options
   , containerless
   , gzip
   , commandLine
+  , timeout
   ) where
 
 import BasicPrelude
@@ -73,3 +74,10 @@ commandLine =
     <> metavar "COMMAND"
     <> help    "Command to run"
 
+timeout :: Parser Int
+timeout =
+  option auto
+    $  long    "timeout"
+    <> short   't'
+    <> metavar "TIMEOUT"
+    <> help    "Timeout in seconds"
