@@ -177,6 +177,7 @@ executable wolf-act2
                      , optparse-applicative
                      , resourcet
                      , shelly
+                     , stm
                      , system-filepath
                      , text
                      , time
