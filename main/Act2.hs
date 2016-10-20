@@ -8,6 +8,7 @@ import           BasicPrelude hiding ( ByteString, (</>), (<.>), hash, length, r
 import           Codec.Compression.GZip
 import           Control.Concurrent
 import           Control.Concurrent.Async
+import           Control.Concurrent.STM
 import           Control.Monad.Trans.Resource
 import           Data.Aeson.Encode
 import           Data.ByteString ( length )
@@ -110,11 +111,11 @@ exec cmdline uid metadata blobs =
           cd dir
           maybe (return ()) (uncurry $ run_ . fromText) $ uncons $ words cmdline
 
-watchdog :: MVar UTCTime -> Int -> IO ()
+watchdog :: TVar UTCTime -> Int -> IO ()
 watchdog timestamp duration =
   forever $ do
     now <- getCurrentTime
-    now' <- readMVar timestamp
+    now' <- atomically $ readTVar timestamp
     when (diffUTCTime now now' > fromIntegral duration) $
       throwIO $ userError "watchdog expired"
     threadDelay 1000000
@@ -123,10 +124,11 @@ call :: Args -> IO ()
 call Args{..} = do
   config <- decodeFile aConfig >>= maybeThrow (userError "Bad Config")
   env <- flowEnv config
-  timestamp <- newEmptyMVar
-  void $ concurrently (watchdog timestamp aTimeout) $ do
+  now <- getCurrentTime
+  timestamp <- atomically $ newTVar now
+  void $ concurrently (watchdog timestamp aTimeout) $
     forever $ runResourceT $ runFlowT env $ do
-      liftIO $ getCurrentTime >>= putMVar timestamp
+      liftIO $ getCurrentTime >>= atomically . writeTVar timestamp
       act aQueue $ exec aCommandLine
 
 main :: IO ()
