@@ -102,8 +102,9 @@ act :: MonadFlow m => Queue -> (Uid -> Metadata -> [Blob] -> m (Metadata, [Artif
 act queue action =
   handle serializeError $ do
     logInfo' "event=act"
-    (token', uid, input) <- pollForActivityTaskAction queue
+    (token', uid', input) <- pollForActivityTaskAction queue
     token <- maybeThrow (userError "No Token") token'
+    uid <- maybeThrow (userError "No Uid") uid'
     logInfo' $ sformat ("event=act-begin uid=" % stext) uid
     maybe_ input $ logDebug' . sformat ("event=act-input " % stext)
     keys <- listObjectsAction uid

@@ -66,7 +66,7 @@ startWorkflowExecutionAction uid name version queue input = do
       sTaskList .~ Just (taskList queue) &
       sInput .~ input
 
-pollForActivityTaskAction :: MonadFlow m => Queue -> m (Maybe Token, Uid, Metadata)
+pollForActivityTaskAction :: MonadFlow m => Queue -> m (Maybe Token, Maybe Uid, Metadata)
 pollForActivityTaskAction queue = do
   timeout' <- asks fePollTimeout
   domain <- asks feDomain
@@ -74,7 +74,7 @@ pollForActivityTaskAction queue = do
     r <- send $ pollForActivityTask domain (taskList queue)
     return
       ( r ^. pfatrsTaskToken
-      , r ^. pfatrsWorkflowExecution ^. weWorkflowId
+      , (^. weWorkflowId) <$> r ^. pfatrsWorkflowExecution
       , r ^. pfatrsInput )
 
 respondActivityTaskCompletedAction :: MonadFlow m => Token -> Metadata -> m ()
