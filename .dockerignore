@@ -1,5 +1,0 @@
-.git/
-cabal.sandbox.config
-.cabal-sandbox/
-dist
-.stack-work/
