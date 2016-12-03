@@ -1,11 +1,13 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Register
   ( main
   ) where
 
 import BasicPrelude
 import Control.Concurrent.Async
-import Control.Monad.Trans.Resource hiding ( register )
-import Data.Yaml hiding ( Parser )
+import Control.Monad.Trans.Resource hiding (register)
+import Data.Yaml                    hiding (Parser)
 import Network.AWS.Flow
 import Options
 import Options.Applicative

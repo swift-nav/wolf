@@ -1,4 +1,5 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase      #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Network.AWS.Flow
   ( register
@@ -26,17 +27,17 @@ module Network.AWS.Flow
 
 import           Network.AWS.Flow.Env
 import           Network.AWS.Flow.Logger
+import           Network.AWS.Flow.Prelude hiding (ByteString, Metadata, handle)
 import           Network.AWS.Flow.S3
 import           Network.AWS.Flow.SWF
 import           Network.AWS.Flow.Types
 import           Network.AWS.Flow.Uid
-import           Network.AWS.Flow.Prelude hiding ( ByteString, Metadata, handle )
 
 import           Control.Monad.Catch
 import           Data.Char
-import qualified Data.HashMap.Strict as Map
-import           Data.Text ( pack )
-import           Formatting hiding ( string )
+import qualified Data.HashMap.Strict      as Map
+import           Data.Text                (pack)
+import           Formatting               hiding (string)
 import           Network.AWS.SWF
 import           Network.HTTP.Types
 import           Safe
@@ -85,7 +86,7 @@ exitCode =
 actException :: MonadFlow m => Token -> SomeException -> m ()
 actException token e = do
   logError' $ sformat ("event=act-exception " % stext) $ show e
-  maybe' ((textToString $ show e) =~ exitCode) (respondActivityTaskFailedAction token) $ \code -> do
+  maybe' (textToString (show e) =~ exitCode) (respondActivityTaskFailedAction token) $ \code ->
     if code == 255 then respondActivityTaskCanceledAction token else
       respondActivityTaskFailedAction token
 

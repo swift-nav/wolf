@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Network.AWS.Flow.Env
   ( flowEnv
   ) where

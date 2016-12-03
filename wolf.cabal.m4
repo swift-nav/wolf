@@ -1,5 +1,5 @@
 name:                wolf
-version:             0.2.14
+version:             VERSION
 synopsis:            Amazon Simple Workflow Service Wrapper.
 homepage:            https://github.com/swift-nav/wolf
 license:             MIT
@@ -238,3 +238,4 @@ executable shake-wolf
                      , directory
                      , shake
   default-language:    Haskell2010
+
