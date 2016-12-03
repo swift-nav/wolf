@@ -15,6 +15,8 @@ import Network.AWS.Data.Body
 import Network.AWS.Data.Text
 import Network.AWS.S3
 
+{-# ANN module ("HLint: ignore Reduce duplication"::String) #-}
+
 -- Actions
 
 listObjectsAction :: MonadFlow m => Uid -> m [Text]

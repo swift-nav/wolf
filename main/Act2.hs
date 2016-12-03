@@ -1,25 +1,27 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Act2
   ( main
   ) where
 
-import           BasicPrelude hiding ( ByteString, (</>), (<.>), hash, length, readFile, find )
+import           BasicPrelude                 hiding (ByteString, find, hash, length,
+                                               readFile, (<.>), (</>))
 import           Codec.Compression.GZip
 import           Control.Monad.Trans.Resource
 import           Data.Aeson.Encode
-import           Data.ByteString ( length )
-import qualified Data.ByteString.Lazy as BL
-import           Data.Text ( pack, strip )
-import           Data.Text.Lazy ( toStrict )
-import           Data.Text.Lazy.Builder hiding ( fromText )
-import           Data.Yaml hiding ( Parser )
-import           Filesystem.Path ( (<.>), dropExtension )
+import           Data.ByteString              (length)
+import qualified Data.ByteString.Lazy         as BL
+import           Data.Text                    (pack, strip)
+import           Data.Text.Lazy               (toStrict)
+import           Data.Text.Lazy.Builder       hiding (fromText)
+import           Data.Yaml                    hiding (Parser)
+import           Filesystem.Path              (dropExtension, (<.>))
 import           Network.AWS.Data.Crypto
 import           Network.AWS.Flow
 import           Options
-import           Options.Applicative hiding ( action )
-import           Shelly hiding ( FilePath, (<.>), bash )
+import           Options.Applicative          hiding (action)
+import           Shelly                       hiding (FilePath, bash, (<.>))
 
 data Args = Args
   { aConfig      :: FilePath
@@ -88,10 +90,10 @@ exec cmdline uid metadata blobs =
       dataOutput file =
         catch_sh_maybe (readfile file) where
           catch_sh_maybe action =
-            catch_sh (liftM Just action) $ \(_ :: SomeException) -> return Nothing
+            catch_sh (Just <$> action) $ \(_ :: SomeException) -> return Nothing
       storeInput dir =
         forM_ blobs $ \(key, blob) -> do
-          paths <- liftM strip $ run "dirname" [key]
+          paths <- strip <$> run "dirname" [key]
           mkdir_p $ dir </> paths
           writeArtifact (dir </> key) blob
       storeOutput dir = do

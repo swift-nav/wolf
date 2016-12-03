@@ -12,6 +12,8 @@ import Control.Lens
 import Control.Monad.Reader
 import Control.Monad.Trans.AWS
 
+{-# ANN module ("HLint: ignore Use import/export shortcut"::String) #-}
+
 maybe_ :: Monad m => Maybe a -> (a -> m ()) -> m ()
 maybe_ m f = maybe (return ()) f m
 
