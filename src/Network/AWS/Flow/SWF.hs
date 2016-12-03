@@ -18,11 +18,11 @@ module Network.AWS.Flow.SWF
   , startChildWorkflowExecutionDecision
   ) where
 
-import Network.AWS.Flow.Prelude hiding ( Metadata )
+import Network.AWS.Flow.Prelude hiding (Metadata)
 import Network.AWS.Flow.Types
 
 import Data.Conduit
-import Data.Conduit.List hiding ( concatMap )
+import Data.Conduit.List        hiding (concatMap)
 import Network.AWS.SWF
 import Safe
 

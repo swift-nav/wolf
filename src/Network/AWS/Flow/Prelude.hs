@@ -7,7 +7,7 @@ module Network.AWS.Flow.Prelude
   , maybe'
   ) where
 
-import BasicPrelude hiding ( (<.>), uncons )
+import BasicPrelude            hiding (uncons, (<.>))
 import Control.Lens
 import Control.Monad.Reader
 import Control.Monad.Trans.AWS

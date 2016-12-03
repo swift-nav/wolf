@@ -12,7 +12,7 @@ import Control.Monad.Logger
 import Data.Time.Clock
 import Data.Time.Format
 import Data.Version
-import Formatting hiding ( now )
+import Formatting               hiding (now)
 import Paths_wolf
 import System.Log.FastLogger
 

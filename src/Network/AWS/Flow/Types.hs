@@ -1,14 +1,14 @@
 {-# OPTIONS  -fno-warn-orphans          #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ConstraintKinds            #-}
 {-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE UndecidableInstances       #-}
 {-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE UndecidableInstances       #-}
 
 module Network.AWS.Flow.Types where
 
-import Network.AWS.Flow.Prelude hiding ( ByteString, catch )
+import Network.AWS.Flow.Prelude     hiding (ByteString, catch)
 
 import Control.Monad.Base
 import Control.Monad.Catch
