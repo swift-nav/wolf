@@ -25,13 +25,15 @@ data Args = Args
   { aConfig      :: FilePath
   , aQueue       :: Queue
   , aCommandLine :: Text
+  , aGzipless    :: Bool
   } deriving ( Eq, Read, Show )
 
 args :: Parser Args
 args = Args              <$>
   configFile             <*>
   (pack <$> queue)       <*>
-  (pack <$> commandLine)
+  (pack <$> commandLine) <*>
+  gzipless
 
 parser :: ParserInfo Args
 parser =
@@ -54,8 +56,8 @@ encodeText = toStrict . toLazyText . encodeToTextBuilder . toJSON
 handler :: MonadBaseControl IO m => m () -> m (Maybe SomeException)
 handler a = handle (return . Just) $ a >> return Nothing
 
-exec :: MonadIO m => Text -> Uid -> Metadata -> [Blob] -> m (Metadata, [Artifact], Maybe SomeException)
-exec cmdline uid metadata blobs =
+exec :: MonadIO m => Args -> Text -> Uid -> Metadata -> [Blob] -> m (Metadata, [Artifact], Maybe SomeException)
+exec Args{..} cmdline uid metadata blobs =
   shelly $ withDir $ \dir dataDir storeDir -> do
     control $ dataDir </> pack "control.json"
     storeInput $ storeDir </> pack "input"
@@ -74,15 +76,26 @@ exec cmdline uid metadata blobs =
       control file =
         writefile file $ encodeText $ Control uid
       writeArtifact file blob =
-        writeBinary (dropExtension file) $ BL.toStrict $ decompress blob
+        if aGzipless then
+          writeBinary file $ BL.toStrict blob
+        else
+          writeBinary (dropExtension file) $ BL.toStrict $ decompress blob
       readArtifact dir file = do
         key <- relativeTo dir file
-        blob <- BL.toStrict . compress . BL.fromStrict <$> readBinary file
-        return ( toTextIgnore (key <.> "gz")
-               , hash blob
-               , fromIntegral $ length blob
-               , BL.fromStrict blob
-               )
+        if aGzipless then do
+          blob <- readBinary file
+          return ( toTextIgnore key
+                 , hash blob
+                 , fromIntegral $ length blob
+                 , BL.fromStrict blob
+                 )
+        else do
+          blob <- BL.toStrict . compress . BL.fromStrict <$> readBinary file
+          return ( toTextIgnore (key <.> "gz")
+                 , hash blob
+                 , fromIntegral $ length blob
+                 , BL.fromStrict blob
+                 )
       dataInput file =
         maybe (return ()) (writefile file) metadata
       dataOutput file =
@@ -110,7 +123,7 @@ call Args{..} = do
   config <- decodeFile aConfig >>= maybeThrow (userError "Bad Config")
   env <- flowEnv config
   forever $ runResourceT $ runFlowT env $
-    act aQueue $ exec aCommandLine
+    act aQueue $ exec Args{..} aCommandLine
 
 main :: IO ()
 main = execParser parser >>= call
