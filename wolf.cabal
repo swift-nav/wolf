@@ -1,5 +1,5 @@
 name:                wolf
-version:             0.2.8.1
+version:             0.2.8.2
 synopsis:            Amazon Simple Workflow Service Wrapper.
 homepage:            https://github.com/swift-nav/wolf
 license:             MIT
