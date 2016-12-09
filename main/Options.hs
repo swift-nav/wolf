@@ -6,6 +6,7 @@ module Options
   , queue
   , containerless
   , gzip
+  , gzipless
   , commandLine
   ) where
 
@@ -64,6 +65,12 @@ gzip =
   switch
     $  long "gzip"
     <> help "GZIP contents of artifacts"
+
+gzipless :: Parser Bool
+gzipless =
+  switch
+    $  long "gzipless"
+    <> help "disable GZIP contents of artifacts"
 
 commandLine :: Parser String
 commandLine =
