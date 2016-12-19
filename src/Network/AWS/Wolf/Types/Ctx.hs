@@ -6,37 +6,9 @@
 --
 module Network.AWS.Wolf.Types.Ctx where
 
-import Control.Monad.Catch
-import Control.Monad.Logger
-import Control.Monad.Reader
 import Control.Monad.Trans.AWS
-import Control.Monad.Trans.Resource
-import Network.AWS.Wolf.Lens
 import Network.AWS.Wolf.Prelude
-import Network.AWS.Wolf.Types.Alias
 import Network.AWS.Wolf.Types.Product
-
--- | Ctx
---
--- Base context, supports tracing.
---
-data Ctx = Ctx
-  { _cPreamble :: Pairs
-    -- ^ Object to encode on every trace line.
-  , _cTrace    :: Trace
-    -- ^ Configurable tracing function.
-  }
-
-$(makeClassy ''Ctx)
-
-type MonadCtx c m =
-  ( MonadBaseControlIO m
-  , MonadReader c m
-  , MonadLogger m
-  , MonadCatch m
-  , MonadResource m
-  , HasCtx c
-  )
 
 -- | ConfCtx
 --

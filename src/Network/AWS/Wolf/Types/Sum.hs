@@ -6,7 +6,6 @@
 module Network.AWS.Wolf.Types.Sum where
 
 import Data.Aeson.TH
-import Network.AWS.Wolf.Aeson
 import Network.AWS.Wolf.Prelude
 
 -- | LabelType

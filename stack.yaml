@@ -2,4 +2,5 @@ flags: {}
 packages:
 - '.'
 resolver: lts-6.25
-extra-deps: []
+extra-deps:
+- preamble-0.0.2

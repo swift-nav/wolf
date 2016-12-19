@@ -13,7 +13,6 @@ import Network.AWS.Wolf.File
 import Network.AWS.Wolf.Prelude
 import Network.AWS.Wolf.S3
 import Network.AWS.Wolf.SWF
-import Network.AWS.Wolf.Trace
 import Network.AWS.Wolf.Types
 import System.Process
 

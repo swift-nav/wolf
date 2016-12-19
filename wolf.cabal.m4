@@ -30,22 +30,16 @@ library
                      , Network.AWS.Flow.Types
                      , Network.AWS.Flow.Uid
                      , Network.AWS.Wolf.Act
-                     , Network.AWS.Wolf.Aeson
                      , Network.AWS.Wolf.Ctx
                      , Network.AWS.Wolf.Decide
                      , Network.AWS.Wolf.File
-                     , Network.AWS.Wolf.Lens
                      , Network.AWS.Wolf.Prelude
                      , Network.AWS.Wolf.S3
                      , Network.AWS.Wolf.SWF
-                     , Network.AWS.Wolf.Trace
                      , Network.AWS.Wolf.Types
-                     , Network.AWS.Wolf.Types.Alias
                      , Network.AWS.Wolf.Types.Ctx
-                     , Network.AWS.Wolf.Types.Plan
                      , Network.AWS.Wolf.Types.Product
                      , Network.AWS.Wolf.Types.Sum
-                     , Network.AWS.Wolf.Types.Trans
                      , Paths_wolf
   default-language:    Haskell2010
   hs-source-dirs:      src
@@ -76,6 +70,7 @@ library
                      , mtl
                      , mtl-compat
                      , optparse-applicative
+                     , preamble
                      , process
                      , regex-applicative
                      , regex-compat
