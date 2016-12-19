@@ -4,16 +4,18 @@ module Network.AWS.Flow.S3
   , putObjectAction
   ) where
 
-import Network.AWS.Flow.Prelude hiding ( ByteString, hash, stripPrefix )
+import Network.AWS.Flow.Prelude hiding (ByteString, hash, stripPrefix)
 import Network.AWS.Flow.Types
 
 import Data.Conduit
-import Data.Conduit.List hiding ( concatMap, map, mapMaybe )
 import Data.Conduit.Binary
-import Data.Text hiding ( concatMap, map )
+import Data.Conduit.List        hiding (concatMap, map, mapMaybe)
+import Data.Text                hiding (concatMap, map)
 import Network.AWS.Data.Body
 import Network.AWS.Data.Text
 import Network.AWS.S3
+
+{-# ANN module ("HLint: ignore Reduce duplication"::String) #-}
 
 -- Actions
 

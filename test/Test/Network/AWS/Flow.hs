@@ -11,7 +11,7 @@ import Test.Tasty.HUnit
 assertUserError :: String -> IO a -> IO ()
 assertUserError s action =
   handleJust check (const $ return ()) $ do
-    void $ action
+    void action
     assertFailure $ "missed user error: " ++ s where
       check e = guard $ userError s == e
 

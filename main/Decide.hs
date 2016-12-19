@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Decide
   ( main
   ) where
@@ -5,7 +7,7 @@ module Decide
 import BasicPrelude
 import Control.Concurrent.Async
 import Control.Monad.Trans.Resource
-import Data.Yaml hiding ( Parser )
+import Data.Yaml                    hiding (Parser)
 import Network.AWS.Flow
 import Options
 import Options.Applicative
