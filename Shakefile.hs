@@ -173,6 +173,7 @@ globalRules = do
   -- | build
   --
   fake pats "build" $ \_files -> do
+    need [ "wolf.cabal" ]
     stack [ "build", "--fast" ]
 
   -- | build-error
