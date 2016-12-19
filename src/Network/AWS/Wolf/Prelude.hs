@@ -17,13 +17,12 @@ module Network.AWS.Wolf.Prelude
   , MonadMain
   ) where
 
-import BasicPrelude                    as Exports hiding (stripPrefix)
 import Control.Concurrent.Async.Lifted
-import Control.Lens                    as Exports hiding (uncons, (.=), (<.>))
 import Control.Monad.Catch
 import Control.Monad.Trans.Control
 import Control.Monad.Trans.Resource
 import Data.Text                       hiding (map)
+import Preamble                        as Exports hiding (stripPrefix)
 
 -- | Maybe that returns () if Nothing
 --

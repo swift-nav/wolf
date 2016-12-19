@@ -12,7 +12,6 @@ import Network.AWS.Wolf.Ctx
 import Network.AWS.Wolf.File
 import Network.AWS.Wolf.Prelude
 import Network.AWS.Wolf.SWF
-import Network.AWS.Wolf.Trace
 import Network.AWS.Wolf.Types
 
 -- | Decider logic - poll for decisions, make decisions.
