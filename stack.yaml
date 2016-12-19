@@ -3,3 +3,4 @@ packages:
 - '.'
 resolver: lts-6.25
 extra-deps: []
+pvp-bounds: both
