@@ -15,6 +15,8 @@ import Network.AWS.Wolf.SWF
 import Network.AWS.Wolf.Trace
 import Network.AWS.Wolf.Types
 
+-- | Decider logic - poll for decisions, make decisions.
+--
 decide :: MonadConf c m => Plan -> m ()
 decide plan =
   preConfCtx [ "label" .= LabelDecide ] $
@@ -26,6 +28,8 @@ decide plan =
           traceInfo "start" mempty
           traceInfo "finish" mempty
 
+-- | Run decider from main with config file.
+--
 decideMain :: MonadMain m => FilePath -> FilePath -> m ()
 decideMain cf pf =
   runCtx $ do

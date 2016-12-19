@@ -16,6 +16,8 @@ import Network.AWS.SWF
 import Network.AWS.Wolf.Prelude
 import Network.AWS.Wolf.Types
 
+-- | Poll for activities.
+--
 pollActivity :: MonadAmazonWork c m => m (Maybe Text, Maybe Text, Maybe Text)
 pollActivity = do
   d      <- view cDomain <$> view ccConf
@@ -27,6 +29,8 @@ pollActivity = do
     , pfatrs ^. pfatrsInput
     )
 
+-- | Poll for decisions.
+--
 pollDecision :: MonadAmazonWork c m => m (Maybe Text, [HistoryEvent])
 pollDecision = do
   d      <- view cDomain <$> view ccConf
@@ -37,10 +41,14 @@ pollDecision = do
     , reverse $ concatMap (view pfdtrsEvents) pfdtrs
     )
 
+-- | Successfull job completion.
+--
 completeActivity :: MonadAmazon c m => Text -> Maybe Text -> m ()
 completeActivity token output =
   void $ send $ set ratcResult output $ respondActivityTaskCompleted token
 
+-- | Job failure.
+--
 failActivity :: MonadAmazon c m => Text -> m ()
 failActivity token =
   void $ send $ respondActivityTaskFailed token

@@ -17,6 +17,8 @@ import Network.AWS.Wolf.Trace
 import Network.AWS.Wolf.Types
 import System.Process
 
+-- | Download artifacts to the store input directory.
+--
 download :: MonadAmazonStore c m => FilePath -> m ()
 download dir = do
   ks <- listArtifacts
@@ -24,6 +26,8 @@ download dir = do
     traceInfo "get-artifact" [ "key" .= k ]
     getArtifact (dir </> textToString k) k
 
+-- | Upload artifacts from the store output directory.
+--
 upload :: MonadAmazonStore c m => FilePath -> m ()
 upload dir = do
   fs <- findRegularFiles dir
@@ -32,12 +36,16 @@ upload dir = do
     traceInfo "put-artifact" [ "key" .= k ]
     traverse (putArtifact f) k
 
+-- | callCommand wrapper that maybe returns an exception.
+--
 callCommand' :: MonadMain m => String -> m (Maybe SomeException)
 callCommand' command =
   handle (return . Just) $ do
     liftIO $ callCommand command
     return Nothing
 
+-- | Run command and maybe returns an exception.
+--
 run :: MonadCtx c m => String -> m (Maybe SomeException)
 run command =
   preCtx [ "command" .= command ] $ do
@@ -46,6 +54,8 @@ run command =
     traceInfo "end" [ "exception" .= (displayException <$> e) ]
     return e
 
+-- | Actor logic - poll for work, download artifacts, run command, upload artifacts.
+--
 act :: MonadConf c m => Text -> String -> m ()
 act queue command =
   preConfCtx [ "label" .= LabelAct ] $
@@ -71,6 +81,8 @@ act queue command =
                 maybe (completeActivity token' output) (const $ failActivity token') e
                 traceInfo "finish" [ "output" .= output ]
 
+-- | Run actor from main with config file.
+--
 actMain :: MonadMain m => FilePath -> Text -> String -> m ()
 actMain cf queue command =
   runCtx $ do
