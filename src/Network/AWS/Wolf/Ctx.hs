@@ -59,7 +59,7 @@ runAmazonStoreCtx :: MonadAmazon c m => Text -> TransT AmazonStoreCtx m a -> m a
 runAmazonStoreCtx uid action = do
   let preamble = [ "uid" .= uid ]
   c <- view amazonCtx <&> cPreamble <>~ preamble
-  p <- (<\> uid) . view cPrefix <$> view ccConf
+  p <- (-/- uid) . view cPrefix <$> view ccConf
   runTransT (AmazonStoreCtx c uid p) action
 
 -- | Update amazon context's preamble.

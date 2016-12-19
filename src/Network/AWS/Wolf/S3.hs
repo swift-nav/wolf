@@ -35,7 +35,7 @@ getArtifact :: MonadAmazonStore c m => FilePath -> Text -> m ()
 getArtifact file key = do
   b    <- view cBucket <$> view ccConf
   p    <- view ascPrefix
-  gors <- send $ getObject (BucketName b) (ObjectKey (p <\> key))
+  gors <- send $ getObject (BucketName b) (ObjectKey (p -/- key))
   sinkBody (gors ^. gorsBody) (sinkFile file)
 
 -- | Put object in bucket with key.
@@ -45,5 +45,5 @@ putArtifact file key = do
   b          <- view cBucket <$> view ccConf
   p          <- view ascPrefix
   (sha, len) <- sourceFile file $$ getZipSink $ (,) <$> ZipSink sinkSHA256 <*> ZipSink lengthE
-  void $ send $ putObject (BucketName b) (ObjectKey (p <\> key)) $
+  void $ send $ putObject (BucketName b) (ObjectKey (p -/- key)) $
     Hashed $ HashedStream sha len $ sourceFile file

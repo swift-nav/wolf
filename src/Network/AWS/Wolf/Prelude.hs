@@ -7,12 +7,8 @@
 module Network.AWS.Wolf.Prelude
   ( module Exports
   , runResourceT
-  , maybe_
-  , eitherThrowIO
   , runConcurrent
-  , textFromString
   , stripPrefix'
-  , (<\>)
   , MonadBaseControlIO
   , MonadMain
   ) where
@@ -24,36 +20,16 @@ import Control.Monad.Trans.Resource
 import Data.Text                       hiding (map)
 import Preamble                        as Exports hiding (stripPrefix)
 
--- | Maybe that returns () if Nothing
---
-maybe_ :: Monad m => Maybe a -> (a -> m ()) -> m ()
-maybe_ = flip $ maybe $ return ()
-
--- | Throw userError on either error.
---
-eitherThrowIO :: MonadIO m => Either String a -> m a
-eitherThrowIO = either (liftIO . throwIO . userError) return
-
 -- | Run a list of actions concurrently.
 --
 runConcurrent :: MonadBaseControl IO m => [m a] -> m ()
 runConcurrent = void . runConcurrently . sequenceA . map Concurrently
 
--- | Reverse of textToString
---
-textFromString :: String -> Text
-textFromString = pack
-
 -- | Strip the prefix with a '/' tacked on to the prefix.
 --
 stripPrefix' :: Text -> Text -> Maybe Text
 stripPrefix' prefix =
-  stripPrefix (prefix <\> mempty)
-
--- | </> for Text.
---
-(<\>) :: Text -> Text -> Text
-(<\>) = (<>) . (<> "/")
+  stripPrefix (prefix -/- mempty)
 
 type MonadBaseControlIO m =
   ( MonadBaseControl IO m
