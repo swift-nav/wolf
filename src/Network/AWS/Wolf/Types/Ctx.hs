@@ -1,4 +1,5 @@
 {-# LANGUAGE ConstraintKinds   #-}
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TemplateHaskell   #-}
 
@@ -7,6 +8,7 @@
 module Network.AWS.Wolf.Types.Ctx where
 
 import Control.Monad.Trans.AWS
+import Network.AWS.SWF
 import Network.AWS.Wolf.Prelude
 import Network.AWS.Wolf.Types.Product
 
@@ -91,7 +93,7 @@ type MonadAmazonStore c m =
    , HasAmazonStoreCtx c
    )
 
--- | AmazonStoreCtx
+-- | AmazonWorkCtx
 --
 -- Amazon work context.
 --
@@ -120,3 +122,36 @@ type MonadAmazonWork c m =
    ( MonadAmazon c m
    , HasAmazonWorkCtx c
    )
+
+-- | AmazonDecisionCtx
+--
+-- Amazon decision context.
+--
+data AmazonDecisionCtx = AmazonDecisionCtx
+  { _adcAmazonCtx :: AmazonCtx
+    -- ^ Parent context.
+  , _adcPlan      :: Plan
+    -- ^ Decision plan.
+  , _adcEvents    :: [HistoryEvent]
+    -- ^ History events.
+  }
+
+$(makeClassyConstraints ''AmazonDecisionCtx [''HasAmazonCtx])
+
+instance HasAmazonCtx AmazonDecisionCtx where
+  amazonCtx = adcAmazonCtx
+
+instance HasConfCtx AmazonDecisionCtx where
+   confCtx = amazonCtx . acConfCtx
+
+instance HasCtx AmazonDecisionCtx where
+   ctx = confCtx . ccCtx
+
+instance HasEnv AmazonDecisionCtx where
+   environment = amazonCtx . acEnv
+
+type MonadAmazonDecision c m =
+   ( MonadAmazon c m
+   , HasAmazonDecisionCtx c
+   )
+

@@ -1,20 +1,54 @@
-[![Wolf][8]][1]
+[![wolf][wolf-img]][wolf]
 
-# [Wolf][1]
+# [wolf][wolf]
 
-[![Package version][2]][3]
-[![Build status][4]][5]
-[![Dependency status][6]][7]
+[![Package version][hackage-img]][hackage]
+[![Build status][travis-img]][travis]
+[![Dependency status][deps-img]][deps]
 
-Wolf is a wrapper around Amazon Simple Workflow Service. More
-documentation is coming, but in the meantime see the examples
-directory.
+Wolf is a wrapper around Amazon Simple Workflow Service: it providers deciders
+that consume plans, and actors the run commands. See [examples](examples).
 
-[1]: https://github.com/swift-nav/wolf
-[2]: https://img.shields.io/hackage/v/wolf.svg?style=flat
-[3]: https://hackage.haskell.org/package/wolf
-[4]: https://img.shields.io/travis/swift-nav/wolf/master.svg?style=flat
-[5]: https://travis-ci.org/swift-nav/wolf
-[6]: https://img.shields.io/hackage-deps/v/wolf.svg?style=flat
-[7]: http://packdeps.haskellers.com/feed?needle=wolf
-[8]: https://cloud.githubusercontent.com/assets/60851/8178609/a077a326-13c4-11e5-9d54-3e417fc6dd6c.jpg
+
+## Development
+
+`wolf` has a shakefile/makefile to provide convience around building and testing:
+
+    # build the project's libraries, executables, and tests
+    $ ./Shakefile.hs build-tests-error
+    
+    # test the project
+    $ ./Shakefile.hs tests-error
+    
+    # start an interpreter with the project's libraries, executables, and tests loaded
+    $ ./Shakefile.hs ghci-tests
+    
+    # install the project's executables
+    $ ./Shakefile.hs install
+    
+    # clean the project
+    $ ./Shakefile.hs clean
+    
+    # lint the project source code
+    $ ./Shakefile.hs lint
+    
+    # format the project source code
+    $ ./Shakefile.hs format
+
+
+## Dependencies
+
+To build, install, run, and test `wolf`, the following dependencies may be required:
+
++ [stack][stack]
+
+
+[wolf]:        https://github.com/swift-nav/wolf
+[wolf-img]:    https://cloud.githubusercontent.com/assets/60851/8178609/a077a326-13c4-11e5-9d54-3e417fc6dd6c.jpg
+[hackage]:     https://hackage.haskell.org/package/wolf
+[hackage-img]: https://img.shields.io/hackage/v/wolf.svg?style=flat
+[travis]:      https://travis-ci.org/swift-nav/wolf
+[travis-img]:  https://img.shields.io/travis/swift-nav/wolf/master.svg?style=flat
+[deps]:        http://packdeps.haskellers.com/feed?needle=wolf
+[deps-img]:    https://img.shields.io/hackage-deps/v/wolf.svg?style=flat
+[stack]:       https://docs.haskellstack.org/en/stable/README/#how-to-install
