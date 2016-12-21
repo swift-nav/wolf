@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
 -- | S3 Calls.

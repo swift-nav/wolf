@@ -13,15 +13,11 @@ import Network.AWS.Wolf.Prelude
 -- SWF and S3 configuration parameters.
 --
 data Conf = Conf
-  { _cTimeout     :: Int
-    -- ^ SWF regular timeout.
-  , _cPollTimeout :: Int
-    -- ^ SWF polling timeout.
-  , _cDomain      :: Text
+  { _cDomain :: Text
     -- ^ SWF domain.
-  , _cBucket      :: Text
+  , _cBucket :: Text
     -- ^ S3 bucket.
-  , _cPrefix      :: Text
+  , _cPrefix :: Text
     -- ^ S3 prefix.
   } deriving (Show, Eq)
 
@@ -42,28 +38,26 @@ $(deriveJSON spinalOptions ''Control)
 --
 -- Work task.
 --
-data PlanTask = PlanTask
-  { _ptName    :: Text
+data Task = Task
+  { _tName    :: Text
     -- ^ Name of task.
-  , _ptVersion :: Text
+  , _tVersion :: Text
     -- ^ Version of task.
-  , _ptQueue   :: Text
+  , _tQueue   :: Text
     -- ^ Queue for task.
-  , _ptTimeout :: Text
-    -- ^ Timeout for task.
   } deriving (Show, Eq)
 
-$(makeLenses ''PlanTask)
-$(deriveJSON spinalOptions ''PlanTask)
+$(makeLenses ''Task)
+$(deriveJSON spinalOptions ''Task)
 
 -- | Plan
 --
 -- Group of tasks.
 --
 data Plan = Plan
-  { _pStart :: PlanTask
+  { _pStart :: Task
     -- ^ Flow task.
-  , _pTasks :: [PlanTask]
+  , _pTasks :: [Task]
     -- ^ Worker tasks.
   } deriving (Show, Eq)
 

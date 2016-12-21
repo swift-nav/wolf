@@ -2,7 +2,6 @@
 {- stack
     runghc
     --package basic-prelude
-    --package directory
     --package shake
  -}
 
@@ -14,8 +13,6 @@
 import BasicPrelude
 import Data.Char
 import Development.Shake
-import Development.Shake.FilePath
-import System.Directory
 
 -- | This file used for version change detection.
 --
@@ -37,13 +34,6 @@ stackDir = ".stack-work"
 fakeDir :: FilePath
 fakeDir = buildDir </> "fake"
 
--- | Build directory where docker files are kept.
---
-dockerDir :: Action FilePath
-dockerDir = do
-  dir <- liftIO getCurrentDirectory
-  return $ buildDir </> takeFileName dir
-
 -- | Fake directory path builder.
 --
 fd :: FilePath -> FilePath
@@ -64,32 +54,10 @@ cmdArgs c as = rstrip . fromStdout <$> cmd c as
 cmdArgs_ :: String -> [String] -> Action ()
 cmdArgs_ c as = unit $ cmd c as
 
--- | Run commands in a dir with return string.
---
-_cmdArgsDir :: FilePath -> String -> [String] -> Action String
-_cmdArgsDir d c as = rstrip . fromStdout <$> cmd (Cwd d) c as
-
--- | Run commands in a dir with no return.
---
-cmdArgsDir_ :: FilePath -> String -> [String] -> Action ()
-cmdArgsDir_ d c as = unit $ cmd (Cwd d) c as
-
--- | Run docker command in docker dir.
---
-docker :: [String] -> Action ()
-docker args = do
-  dir <- dockerDir
-  cmdArgsDir_ dir "docker" args
-
 -- | Stack command.
 --
 stack :: [String] -> Action ()
 stack = cmdArgs_ "stack"
-
--- | Stack exec command.
---
-_stackExec :: String -> [String] -> Action ()
-_stackExec cmd' args = stack $ "exec" : cmd' : "--" : args
 
 -- | Sylish command.
 --
@@ -120,13 +88,6 @@ version = git [ "describe", "--tags", "--abbrev=0" ]
 --
 touchFile :: FilePath -> Action ()
 touchFile = flip writeFile' mempty
-
--- | Copy a file if changed, creating parent directories.
---
-copyFileChanged' :: FilePath -> FilePath -> Action ()
-copyFileChanged' a b = do
-  liftIO $ createDirectoryIfMissing True $ dropFileName b
-  copyFileChanged a b
 
 -- | Preprocess a file with m4
 --
@@ -277,33 +238,6 @@ hsRules = do
   fake pats "lint" $ \files ->
     lint files
 
--- | Docker rules
---
-dockerRules :: Rules ()
-dockerRules = do
-  let pats =
-        [ "Dockerfile"
-        , "Shakefile.hs"
-        , ".dockerignore"
-        , "stack.yaml"
-        , "registrar.cabal"
-        , "main//*.hs"
-        , "src//*.hs"
-        ]
-
-  -- | docker:setup
-  --
-  fake pats "docker:setup" $ \files ->
-    forM_ files $ \file -> do
-      dir <- dockerDir
-      copyFileChanged' file $ dir </> file
-
-  -- | docker:build
-  --
-  phony "docker:build" $ do
-    need [ "docker:setup" ]
-    docker [ "build", "." ]
-
 -- | Main entry point
 --
 main :: IO ()
@@ -313,4 +247,3 @@ main = do
     want [ "tests-error", "lint", "format" ]
     globalRules
     hsRules
-    dockerRules

@@ -39,5 +39,4 @@ def main():
   printerr('\n', '++++++ FINISH hello.py +++++', '\n')
 
 if __name__ == "__main__":
-  1 / 0
   main()

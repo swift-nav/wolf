@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -12,10 +13,13 @@ module Network.AWS.Wolf.Ctx
   , preAmazonStoreCtx
   , runAmazonWorkCtx
   , preAmazonWorkCtx
+  , runAmazonDecisionCtx
+  , preAmazonDecisionCtx
   ) where
 
 import Control.Monad.Trans.AWS
 import Data.Aeson
+import Network.AWS.SWF
 import Network.AWS.Wolf.Prelude
 import Network.AWS.Wolf.Types
 
@@ -82,4 +86,19 @@ runAmazonWorkCtx queue action = do
 preAmazonWorkCtx :: MonadAmazonWork c m => Pairs -> TransT AmazonWorkCtx m a -> m a
 preAmazonWorkCtx preamble action = do
   c <- view amazonWorkCtx <&> cPreamble <>~ preamble
+  runTransT c action
+
+-- | Run amazon decision context.
+--
+runAmazonDecisionCtx :: MonadAmazon c m => Plan -> [HistoryEvent] -> TransT AmazonDecisionCtx m a -> m a
+runAmazonDecisionCtx p hes action = do
+  let preamble = [ "name" .= (p ^. pStart ^. tName) ]
+  c <- view amazonCtx <&> cPreamble <>~ preamble
+  runTransT (AmazonDecisionCtx c p hes) action
+
+-- | Update amazon context's preamble.
+--
+preAmazonDecisionCtx :: MonadAmazonDecision c m => Pairs -> TransT AmazonDecisionCtx m a -> m a
+preAmazonDecisionCtx preamble action = do
+  c <- view amazonDecisionCtx <&> cPreamble <>~ preamble
   runTransT c action
