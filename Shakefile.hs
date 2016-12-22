@@ -20,7 +20,6 @@ main = shakeMain $ do
         , "Shakefile.hs"
         , "main//*.hs"
         , "src//*.hs"
-        , "test//*.hs"
         ]
 
   -- | Cabal rules.
