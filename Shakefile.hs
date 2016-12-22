@@ -190,7 +190,7 @@ globalRules = do
   phony "publish" $ do
     need [ "wolf.cabal" ]
     stack [ "sdist" ]
-    stack [ "upload", "." ]
+    stack [ "upload", ".", "--no-signature" ]
 
   -- | clean
   --
