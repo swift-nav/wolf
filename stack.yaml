@@ -3,4 +3,5 @@ packages:
 - '.'
 resolver: lts-6.25
 extra-deps:
-- preamble-0.0.3
+- preamble-0.0.6
+- shakers-0.0.2
