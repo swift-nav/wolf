@@ -213,9 +213,8 @@ globalRules = do
 
   -- | sanity
   --
-  phony "sanity" $ do
-    need [ "lint" ]
-    stack [ "build", "--fast", "--test", "--no-run-tests", "--ghc-options=-Werror" ]
+  phony "sanity" $
+    need [ "build-tests-error", "lint" ]
 
 -- | Haskell source rules
 --

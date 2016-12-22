@@ -24,4 +24,5 @@ install:
   - stack install hlint
 
 script:
+  - git fetch --tags --unshallow
   - ./Shakefile.hs sanity

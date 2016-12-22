@@ -6,8 +6,9 @@
 [![Build status][travis-img]][travis]
 [![Dependency status][deps-img]][deps]
 
-Wolf is a wrapper around Amazon Simple Workflow Service: it providers deciders
-that consume plans, and actors the run commands. See [examples](examples).
+Wolf is a wrapper around Amazon Simple Workflow Service: it providers a decider
+that implements plans, an actor that runs commands, and a registrar that
+installs plans. See [examples](examples).
 
 
 ## Development
