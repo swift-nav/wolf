@@ -1,23 +1,20 @@
-name:                wolf
-version:             VERSION
-synopsis:            Amazon Simple Workflow Service Wrapper.
-homepage:            https://github.com/swift-nav/wolf
-license:             MIT
-license-file:        LICENSE
-author:              Swift Navigation Inc.
-maintainer:          Mark Fine <dev@swiftnav.com>
-copyright:           Copyright (C) 2015 Swift Navigation, Inc.
-category:            Network, AWS, Cloud, Distributed Computing
-build-type:          Simple
-extra-source-files:  README.md
-cabal-version:       >= 1.10
-
-description:
-  Wolf is a wrapper around Amazon Simple Workflow Service.
+name:                  wolf
+version:               VERSION
+synopsis:              Amazon Simple Workflow Service Wrapper.
+description:           Wolf is a wrapper around Amazon Simple Workflow Service.
+homepage:              https://github.com/swift-nav/wolf
+license:               MIT
+license-file:          LICENSE
+author:                Swift Navigation Inc.
+maintainer:            Mark Fine <dev@swiftnav.com>
+copyright:             Copyright (C) 2015-2016 Swift Navigation, Inc.
+category:              Network, AWS, Cloud, Distributed Computing
+build-type:            Simple
+cabal-version:         >= 1.22
 
 source-repository head
-  type:              git
-  location:          git@github.com:swift-nav/wolf.git
+  type:                git
+  location:            git@github.com:swift-nav/wolf.git
 
 library
   exposed-modules:     Network.AWS.Wolf
@@ -40,7 +37,7 @@ library
                      , amazonka-core
                      , amazonka-s3
                      , amazonka-swf
-                     , base >= 4.7 && < 5
+                     , base >= 4.8 && < 5
                      , bytestring
                      , conduit
                      , conduit-combinators
@@ -62,7 +59,7 @@ library
 executable wolf-actor
   hs-source-dirs:      main
   main-is:             actor.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall -O2
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall
   build-depends:       base
                      , wolf
                      , optparse-generic
@@ -71,7 +68,7 @@ executable wolf-actor
 executable wolf-decider
   hs-source-dirs:      main
   main-is:             decider.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall -O2
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall
   build-depends:       base
                      , wolf
                      , optparse-generic
@@ -79,8 +76,8 @@ executable wolf-decider
 
 executable shake-wolf
   main-is:             Shakefile.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall -O2
-  build-depends:       base >= 4.7 && < 5
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall
+  build-depends:       base >= 4.8 && < 5
                      , basic-prelude
                      , directory
                      , shake
