@@ -120,13 +120,13 @@ copyDirectoryRecursive fd td =
 
 -- | Setup a temporary work directory.
 --
-withWorkDirectory :: MonadBaseControlIO m => Text -> (FilePath -> m a) -> m a
+withWorkDirectory :: MonadControl m => Text -> (FilePath -> m a) -> m a
 withWorkDirectory uid =
   bracket (getWorkDirectory uid) (liftIO . removeDirectoryRecursive)
 
 -- | Change to directory and then return to current directory.
 --
-withCurrentDirectory :: MonadBaseControlIO m => FilePath -> (FilePath -> m a) -> m a
+withCurrentDirectory :: MonadControl m => FilePath -> (FilePath -> m a) -> m a
 withCurrentDirectory wd action =
   bracket (liftIO getCurrentDirectory) (liftIO . setCurrentDirectory) $ \cd -> do
     liftIO $ setCurrentDirectory wd
@@ -134,7 +134,7 @@ withCurrentDirectory wd action =
 
 -- | Setup a temporary work directory and copy current directory files to it.
 --
-withCurrentWorkDirectory :: MonadBaseControlIO m => Text -> (FilePath -> m a) -> m a
+withCurrentWorkDirectory :: MonadControl m => Text -> (FilePath -> m a) -> m a
 withCurrentWorkDirectory uid action =
   withWorkDirectory uid $ \wd ->
     withCurrentDirectory wd $ \cd -> do

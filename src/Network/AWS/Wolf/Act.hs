@@ -84,9 +84,10 @@ act queue command =
 
 -- | Run actor from main with config file.
 --
-actMain :: MonadMain m => FilePath -> Text -> String -> m ()
+actMain :: MonadControl m => FilePath -> Text -> String -> m ()
 actMain cf queue command =
-  runCtx $ do
-    conf <- readYaml cf
-    runConfCtx conf $
-      forever $ act queue command
+  runResourceT $
+    runCtx $ do
+      conf <- readYaml cf
+      runConfCtx conf $
+        forever $ act queue command

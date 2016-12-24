@@ -27,7 +27,7 @@ instance ParseRecord Args
 main :: IO ()
 main = do
   args <- getRecord "Actor"
-  runResourceT $ actMain
+  actMain
     (config args)
     (queue args)
     (command args)

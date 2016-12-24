@@ -25,6 +25,6 @@ instance ParseRecord Args
 main :: IO ()
 main = do
   args <- getRecord "Decider"
-  runResourceT $ decideMain
+  decideMain
     (config args)
     (plan args)
