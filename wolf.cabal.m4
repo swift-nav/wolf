@@ -45,6 +45,7 @@ library
                      , directory
                      , exceptions
                      , filemanip
+                     , filepath
                      , lifted-async
                      , monad-control
                      , optparse-applicative
