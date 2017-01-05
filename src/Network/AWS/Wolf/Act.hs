@@ -25,7 +25,9 @@ download dir = do
   ks <- listArtifacts
   forM_ ks $ \k -> do
     traceInfo "get-artifact" [ "key" .= k ]
-    getArtifact (dir </> textToString k) k
+    let file = dir </> textToString k
+    touchDirectory file
+    getArtifact file k
 
 -- | Upload artifacts from the store output directory.
 --

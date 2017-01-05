@@ -5,6 +5,7 @@
 --
 module Network.AWS.Wolf.File
   ( findRegularFiles
+  , touchDirectory
   , dataDirectory
   , storeDirectory
   , inputDirectory
@@ -23,6 +24,7 @@ import           Data.Time
 import           Data.Yaml                hiding (encode)
 import           Network.AWS.Wolf.Prelude hiding (find)
 import           System.Directory
+import           System.FilePath
 import           System.FilePath.Find
 import           System.IO                hiding (readFile, writeFile)
 
@@ -31,6 +33,12 @@ import           System.IO                hiding (readFile, writeFile)
 findRegularFiles :: MonadIO m => FilePath -> m [FilePath]
 findRegularFiles =
   liftIO . find always (fileType ==? RegularFile)
+
+-- | Create parent directory of file if missing.
+--
+touchDirectory :: MonadIO m => FilePath -> m ()
+touchDirectory =
+  liftIO . createDirectoryIfMissing True . takeDirectory
 
 -- | Determine path to data directory and create it.
 --
