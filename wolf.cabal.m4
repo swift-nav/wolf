@@ -37,7 +37,7 @@ library
                      , amazonka-core
                      , amazonka-s3
                      , amazonka-swf
-                     , base >= 4.8 && < 4.9
+                     , base == 4.8.*
                      , bytestring
                      , conduit
                      , conduit-combinators
@@ -78,7 +78,7 @@ executable wolf-decider
 executable shake-wolf
   main-is:             Shakefile.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall
-  build-depends:       base >= 4.8 && < 4.9
+  build-depends:       base == 4.8.*
                      , shakers
   default-language:    Haskell2010
 
