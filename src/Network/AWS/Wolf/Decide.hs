@@ -47,7 +47,7 @@ completed :: MonadAmazonDecision c m => HistoryEvent -> m Decision
 completed he = do
   traceInfo "completed" mempty
   hes <- view adcEvents
-  (input, name) <- maybeThrowIO "No Completed Information" $ do
+  (input, name) <- maybeThrowIO' "No Completed Information" $ do
     atcea <- he ^. heActivityTaskCompletedEventAttributes
     he'   <- flip find hes $ (== atcea ^. atceaScheduledEventId) . view heEventId
     name  <- view atName . view atseaActivityType <$> he' ^. heActivityTaskScheduledEventAttributes
@@ -61,7 +61,7 @@ completed he = do
 begin :: MonadAmazonDecision c m => HistoryEvent -> m Decision
 begin he = do
   traceInfo "begin" mempty
-  input <- maybeThrowIO "No Start Information" $
+  input <- maybeThrowIO' "No Start Information" $
     view weseaInput <$> he ^. heWorkflowExecutionStartedEventAttributes
   p <- view adcPlan
   maybe (end input) (next input) $ headMay (p ^. pTasks)
@@ -73,7 +73,7 @@ schedule = do
   traceInfo "schedule" mempty
   hes <- view adcEvents
   f hes >>=
-    maybeThrowIO "No Select Information"
+    maybeThrowIO' "No Select Information"
   where
     f []       = return Nothing
     f (he:hes) =

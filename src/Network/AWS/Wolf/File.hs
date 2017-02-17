@@ -100,7 +100,7 @@ readYaml :: (MonadIO m, FromJSON a) => FilePath -> m a
 readYaml file =
   liftIO $ withFile file ReadMode $ \h -> do
     body <- BS.hGetContents h
-    eitherThrowIO $ decodeEither body
+    eitherThrowIO' $ decodeEither body
 
 -- | Get a temporary timestamped work directory.
 --
