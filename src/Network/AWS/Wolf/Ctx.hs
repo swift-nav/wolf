@@ -80,13 +80,18 @@ preAmazonStoreCtx preamble action = do
   c <- view amazonStoreCtx <&> cPreamble <>~ preamble
   runTransT c $ catch action catcher
 
+-- | Amazon throttle handler.
+--
+throttler :: MonadAmazon c m => m a -> Error -> m a
+throttler action e = action
+
 -- | Run amazon work context.
 --
 runAmazonWorkCtx :: MonadAmazon c m => Text -> TransT AmazonWorkCtx m a -> m a
 runAmazonWorkCtx queue action = do
   let preamble = [ "queue" .= queue ]
   c <- view amazonCtx <&> cPreamble <>~ preamble
-  runTransT (AmazonWorkCtx c queue) $ catch action catcher
+  runTransT (AmazonWorkCtx c queue) $ catch (catch action $ throttler action) catcher
 
 -- | Update amazon context's preamble.
 --
