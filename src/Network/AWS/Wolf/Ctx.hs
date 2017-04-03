@@ -17,11 +17,13 @@ module Network.AWS.Wolf.Ctx
   , preAmazonDecisionCtx
   ) where
 
+import Control.Concurrent
 import Control.Monad.Trans.AWS
 import Data.Aeson
 import Network.AWS.SWF
 import Network.AWS.Wolf.Prelude
 import Network.AWS.Wolf.Types
+import Network.HTTP.Types
 
 -- | Handler for exceptions, traces and rethrows.
 --
@@ -80,13 +82,26 @@ preAmazonStoreCtx preamble action = do
   c <- view amazonStoreCtx <&> cPreamble <>~ preamble
   runTransT c $ catch action catcher
 
+-- | Amazon throttle handler.
+--
+throttler :: MonadAmazon c m => m a -> Error -> m a
+throttler action e =
+  case e of
+    ServiceError se -> do
+      let delay = liftIO $ threadDelay $ 5 * 1000000
+      bool (throwIO e) (delay >> (catch action $ throttler action)) $
+        se ^. serviceStatus == badRequest400 &&
+        se ^. serviceCode == "Throttling"
+    _ ->
+      throwIO e
+
 -- | Run amazon work context.
 --
 runAmazonWorkCtx :: MonadAmazon c m => Text -> TransT AmazonWorkCtx m a -> m a
 runAmazonWorkCtx queue action = do
   let preamble = [ "queue" .= queue ]
   c <- view amazonCtx <&> cPreamble <>~ preamble
-  runTransT (AmazonWorkCtx c queue) $ catch action catcher
+  runTransT (AmazonWorkCtx c queue) $ catch (catch action $ throttler action) catcher
 
 -- | Update amazon context's preamble.
 --
