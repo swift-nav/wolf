@@ -89,7 +89,7 @@ throttler action e =
   case e of
     ServiceError se -> do
       let delay = liftIO $ threadDelay $ 5 * 1000000
-      bool (throwIO e) (delay >> (catch action $ throttler action)) $
+      bool (throwIO e) (delay >> catch action (throttler action)) $
         se ^. serviceStatus == badRequest400 &&
         se ^. serviceCode == "Throttling"
     _ ->
