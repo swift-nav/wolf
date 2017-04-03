@@ -17,11 +17,13 @@ module Network.AWS.Wolf.Ctx
   , preAmazonDecisionCtx
   ) where
 
+import Control.Concurrent
 import Control.Monad.Trans.AWS
 import Data.Aeson
 import Network.AWS.SWF
 import Network.AWS.Wolf.Prelude
 import Network.AWS.Wolf.Types
+import Network.HTTP.Types
 
 -- | Handler for exceptions, traces and rethrows.
 --
@@ -83,7 +85,15 @@ preAmazonStoreCtx preamble action = do
 -- | Amazon throttle handler.
 --
 throttler :: MonadAmazon c m => m a -> Error -> m a
-throttler action e = action
+throttler action e =
+  case e of
+    ServiceError se -> do
+      let delay = liftIO $ threadDelay $ 3 * 1000000
+      bool (throwIO e) (delay >> action) $
+        se ^. serviceStatus == badRequest400 &&
+        se ^. serviceCode == "Throttling"
+    _ ->
+      throwIO e
 
 -- | Run amazon work context.
 --

@@ -46,6 +46,7 @@ library
                      , exceptions
                      , filemanip
                      , filepath
+                     , http-types
                      , lifted-async
                      , monad-control
                      , optparse-applicative
