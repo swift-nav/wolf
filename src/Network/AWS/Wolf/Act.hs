@@ -49,7 +49,7 @@ callCommand' command =
 
 -- | Run command and maybe returns an exception.
 --
-run :: MonadCtx c m => String -> m (Maybe SomeException)
+run :: MonadStatsCtx c m => String -> m (Maybe SomeException)
 run command =
   preCtx [ "command" .= command ] $ do
     traceInfo "begin" mempty
@@ -89,7 +89,8 @@ act queue command =
 actMain :: MonadControl m => FilePath -> Text -> String -> m ()
 actMain cf queue command =
   runResourceT $
-    runCtx $ do
-      conf <- readYaml cf
-      runConfCtx conf $
-        forever $ act queue command
+    runCtx $
+      runStatsCtx $ do
+        conf <- readYaml cf
+        runConfCtx conf $
+          forever $ act queue command

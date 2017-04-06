@@ -3,9 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Network.AWS.Wolf.Ctx
-  ( runCtx
-  , preCtx
-  , runConfCtx
+  ( runConfCtx
   , preConfCtx
   , runAmazonCtx
   , preAmazonCtx
@@ -27,21 +25,21 @@ import Network.HTTP.Types
 
 -- | Handler for exceptions, traces and rethrows.
 --
-catcher :: MonadCtx c m => SomeException -> m a
+catcher :: MonadStatsCtx c m => SomeException -> m a
 catcher e = do
   traceError "exception" [ "error" .= displayException e ]
   throwIO e
 
 -- | Run configuration context.
 --
-runConfCtx :: MonadCtx c m => Conf -> TransT ConfCtx m a -> m a
+runConfCtx :: MonadStatsCtx c m => Conf -> TransT ConfCtx m a -> m a
 runConfCtx conf action = do
   let preamble =
         [ "domain" .= (conf ^. cDomain)
         , "bucket" .= (conf ^. cBucket)
         , "prefix" .= (conf ^. cPrefix)
         ]
-  c <- view ctx <&> cPreamble <>~ preamble
+  c <- view statsCtx <&> cPreamble <>~ preamble
   runTransT (ConfCtx c conf) $ catch action catcher
 
 -- | Update configuration context's preamble.
