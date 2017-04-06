@@ -3,9 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Network.AWS.Wolf.Ctx
-  ( runCtx
-  , preCtx
-  , runConfCtx
+  ( runConfCtx
   , preConfCtx
   , runAmazonCtx
   , preAmazonCtx
@@ -27,21 +25,22 @@ import Network.HTTP.Types
 
 -- | Handler for exceptions, traces and rethrows.
 --
-catcher :: MonadCtx c m => SomeException -> m a
+catcher :: MonadStatsCtx c m => SomeException -> m a
 catcher e = do
   traceError "exception" [ "error" .= displayException e ]
+  statsCount "wolf.exception" (1 :: Int) mempty
   throwIO e
 
 -- | Run configuration context.
 --
-runConfCtx :: MonadCtx c m => Conf -> TransT ConfCtx m a -> m a
+runConfCtx :: MonadStatsCtx c m => Conf -> TransT ConfCtx m a -> m a
 runConfCtx conf action = do
   let preamble =
         [ "domain" .= (conf ^. cDomain)
         , "bucket" .= (conf ^. cBucket)
         , "prefix" .= (conf ^. cPrefix)
         ]
-  c <- view ctx <&> cPreamble <>~ preamble
+  c <- view statsCtx <&> cPreamble <>~ preamble
   runTransT (ConfCtx c conf) $ catch action catcher
 
 -- | Update configuration context's preamble.
@@ -82,14 +81,20 @@ preAmazonStoreCtx preamble action = do
   c <- view amazonStoreCtx <&> cPreamble <>~ preamble
   runTransT c $ catch action catcher
 
+throttled :: MonadAmazon c m => m a -> m a
+throttled action = do
+  traceError "throttled" mempty
+  statsCount "wolf.throttled" (1 :: Int) mempty
+  liftIO $ threadDelay $ 5 * 1000000
+  catch action $ throttler action
+
 -- | Amazon throttle handler.
 --
 throttler :: MonadAmazon c m => m a -> Error -> m a
 throttler action e =
   case e of
-    ServiceError se -> do
-      let delay = liftIO $ threadDelay $ 5 * 1000000
-      bool (throwIO e) (delay >> catch action (throttler action)) $
+    ServiceError se ->
+      bool (throwIO e) (throttled action) $
         se ^. serviceStatus == badRequest400 &&
         se ^. serviceCode == "Throttling"
     _ ->

@@ -10,6 +10,7 @@ module Network.AWS.Wolf.Act
   ) where
 
 import Data.Aeson
+import Data.Time
 import Network.AWS.Wolf.Ctx
 import Network.AWS.Wolf.File
 import Network.AWS.Wolf.Prelude
@@ -49,7 +50,7 @@ callCommand' command =
 
 -- | Run command and maybe returns an exception.
 --
-run :: MonadCtx c m => String -> m (Maybe SomeException)
+run :: MonadStatsCtx c m => String -> m (Maybe SomeException)
 run command =
   preCtx [ "command" .= command ] $ do
     traceInfo "begin" mempty
@@ -65,12 +66,17 @@ act queue command =
     runAmazonCtx $
       runAmazonWorkCtx queue $ do
         traceInfo "poll" mempty
+        t0 <- liftIO getCurrentTime
         (token, uid, input) <- pollActivity
+        t1 <- liftIO getCurrentTime
+        statsCount "wolf.act.poll.count" (1 :: Int) [ "queue" =. queue ]
+        statsHistogram "wolf.act.poll.elapsed" (diffUTCTime t1 t0) [ "queue" =. queue ]
         maybe_ token $ \token' ->
           maybe_ uid $ \uid' ->
             withCurrentWorkDirectory uid' $ \wd ->
               runAmazonStoreCtx uid' $ do
                 traceInfo "start" [ "input" .= input, "dir" .= wd ]
+                t2 <- liftIO getCurrentTime
                 dd  <- dataDirectory wd
                 sd  <- storeDirectory wd
                 isd <- inputDirectory sd
@@ -82,14 +88,20 @@ act queue command =
                 upload osd
                 output <- readText (dd </> "output.json")
                 maybe (completeActivity token' output) (const $ failActivity token') e
+                t3 <- liftIO getCurrentTime
                 traceInfo "finish" [ "output" .= output ]
+                let status = textFromString $ maybe "complete" (const "fail") e
+                statsCount "wolf.act.activity.count" (1 :: Int) [ "queue" =. queue, "status" =. status ]
+                statsHistogram "wolf.act.activity.elapsed" (diffUTCTime t3 t2) [ "queue" =. queue ]
+
 
 -- | Run actor from main with config file.
 --
 actMain :: MonadControl m => FilePath -> Text -> String -> m ()
 actMain cf queue command =
   runResourceT $
-    runCtx $ do
-      conf <- readYaml cf
-      runConfCtx conf $
-        forever $ act queue command
+    runCtx $
+      runStatsCtx $ do
+        conf <- readYaml cf
+        runConfCtx conf $
+          forever $ act queue command

@@ -17,19 +17,22 @@ import Network.AWS.Wolf.Types.Product
 -- Configuration context.
 --
 data ConfCtx = ConfCtx
-  { _ccCtx  :: Ctx
+  { _ccStatsCtx :: StatsCtx
     -- ^ Parent context.
-  , _ccConf :: Conf
+  , _ccConf     :: Conf
     -- ^ Configuration parameters.
   }
 
-$(makeClassyConstraints ''ConfCtx [''HasCtx])
+$(makeClassyConstraints ''ConfCtx [''HasStatsCtx])
+
+instance HasStatsCtx ConfCtx where
+  statsCtx = ccStatsCtx
 
 instance HasCtx ConfCtx where
-  ctx = ccCtx
+  ctx = statsCtx . ctx
 
 type MonadConf c m =
-  ( MonadCtx c m
+  ( MonadStatsCtx c m
   , HasConfCtx c
   )
 
@@ -49,8 +52,11 @@ $(makeClassyConstraints ''AmazonCtx [''HasConfCtx, ''HasEnv])
 instance HasConfCtx AmazonCtx where
   confCtx = acConfCtx
 
+instance HasStatsCtx AmazonCtx where
+  statsCtx = confCtx . statsCtx
+
 instance HasCtx AmazonCtx where
-  ctx = confCtx . ccCtx
+  ctx = statsCtx . ctx
 
 instance HasEnv AmazonCtx where
   environment = acEnv
@@ -82,8 +88,11 @@ instance HasAmazonCtx AmazonStoreCtx where
 instance HasConfCtx AmazonStoreCtx where
    confCtx = amazonCtx . acConfCtx
 
+instance HasStatsCtx AmazonStoreCtx where
+  statsCtx = confCtx . statsCtx
+
 instance HasCtx AmazonStoreCtx where
-   ctx = confCtx . ccCtx
+  ctx = statsCtx . ctx
 
 instance HasEnv AmazonStoreCtx where
    environment = amazonCtx . acEnv
@@ -112,8 +121,11 @@ instance HasAmazonCtx AmazonWorkCtx where
 instance HasConfCtx AmazonWorkCtx where
    confCtx = amazonCtx . acConfCtx
 
+instance HasStatsCtx AmazonWorkCtx where
+  statsCtx = confCtx . statsCtx
+
 instance HasCtx AmazonWorkCtx where
-   ctx = confCtx . ccCtx
+  ctx = statsCtx . ctx
 
 instance HasEnv AmazonWorkCtx where
    environment = amazonCtx . acEnv
@@ -144,8 +156,11 @@ instance HasAmazonCtx AmazonDecisionCtx where
 instance HasConfCtx AmazonDecisionCtx where
    confCtx = amazonCtx . acConfCtx
 
+instance HasStatsCtx AmazonDecisionCtx where
+  statsCtx = confCtx . statsCtx
+
 instance HasCtx AmazonDecisionCtx where
-   ctx = confCtx . ccCtx
+  ctx = statsCtx . ctx
 
 instance HasEnv AmazonDecisionCtx where
    environment = amazonCtx . acEnv
