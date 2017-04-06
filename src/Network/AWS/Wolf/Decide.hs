@@ -10,6 +10,7 @@ module Network.AWS.Wolf.Decide
   ) where
 
 import Data.Aeson
+import Data.Time
 import Data.UUID
 import Data.UUID.V4
 import Network.AWS.SWF
@@ -88,16 +89,25 @@ schedule = do
 decide :: MonadConf c m => Plan -> m ()
 decide p =
   preConfCtx [ "label" .= LabelDecide ] $
-    runAmazonCtx $
-      runAmazonWorkCtx (p ^. pStart ^. tQueue) $ do
+    runAmazonCtx $ do
+      let queue = p ^. pStart ^. tQueue
+      runAmazonWorkCtx queue $ do
         traceInfo "poll" mempty
+        t0 <- liftIO getCurrentTime
         (token, hes) <- pollDecision
+        t1 <- liftIO getCurrentTime
+        statsCount "wolf.decide.poll.count" (1 :: Int) [ "queue" =. queue ]
+        statsHistogram "wolf.decide.poll.elapsed" (diffUTCTime t1 t0) [ "queue" =. queue ]
         maybe_ token $ \token' ->
           runAmazonDecisionCtx p hes $ do
             traceInfo "start" mempty
+            t2 <- liftIO getCurrentTime
             schedule >>=
               completeDecision token'
+            t3 <- liftIO getCurrentTime
             traceInfo "finish" mempty
+            statsCount "wolf.decide.decision.count" (1 :: Int) [ "queue" =. queue ]
+            statsHistogram "wolf.decide.decision.elapsed" (diffUTCTime t3 t2) [ "queue" =. queue ]
 
 -- | Run decider from main with config file.
 --
