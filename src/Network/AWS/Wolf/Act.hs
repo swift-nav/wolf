@@ -70,7 +70,7 @@ act queue command =
         (token, uid, input) <- pollActivity
         t1 <- liftIO getCurrentTime
         statsCount "wolf.act.poll.count" (1 :: Int) [ "queue" =. queue ]
-        statsHistogram "wolf.act.poll.elapsed" (diffUTCTime t1 t0) [ "queue" =. queue ]
+        statsHistogram "wolf.act.poll.elapsed" (realToFrac (diffUTCTime t1 t0) :: Double) [ "queue" =. queue ]
         maybe_ token $ \token' ->
           maybe_ uid $ \uid' ->
             withCurrentWorkDirectory uid' $ \wd ->
@@ -92,7 +92,7 @@ act queue command =
                 traceInfo "finish" [ "output" .= output ]
                 let status = textFromString $ maybe "complete" (const "fail") e
                 statsCount "wolf.act.activity.count" (1 :: Int) [ "queue" =. queue, "status" =. status ]
-                statsHistogram "wolf.act.activity.elapsed" (diffUTCTime t3 t2) [ "queue" =. queue ]
+                statsHistogram "wolf.act.activity.elapsed" (realToFrac (diffUTCTime t3 t2) :: Double) [ "queue" =. queue ]
 
 
 -- | Run actor from main with config file.
