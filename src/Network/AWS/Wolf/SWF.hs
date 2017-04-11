@@ -6,6 +6,8 @@
 module Network.AWS.Wolf.SWF
   ( pollActivity
   , pollDecision
+  , countActivities
+  , countDecisions
   , completeActivity
   , failActivity
   , completeDecision
@@ -45,6 +47,24 @@ pollDecision = do
     ( join $ headMay $ map (view pfdtrsTaskToken) pfdtrs
     , reverse $ concatMap (view pfdtrsEvents) pfdtrs
     )
+
+-- | Count activities.
+--
+countActivities :: MonadAmazonWork c m => m Int
+countActivities = do
+  d   <- view cDomain <$> view ccConf
+  tl  <- taskList <$> view awcQueue
+  ptc <- send (countPendingActivityTasks d tl)
+  return $ fromIntegral (ptc ^. ptcCount)
+
+-- | Count decisions.
+--
+countDecisions :: MonadAmazonWork c m => m Int
+countDecisions = do
+  d   <- view cDomain <$> view ccConf
+  tl  <- taskList <$> view awcQueue
+  ptc <- send (countPendingDecisionTasks d tl)
+  return $ fromIntegral (ptc ^. ptcCount)
 
 -- | Successful job completion.
 --
@@ -96,5 +116,3 @@ failWork =
   where
     fweda =
       failWorkflowExecutionDecisionAttributes
-
-

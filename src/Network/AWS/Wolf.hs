@@ -5,5 +5,6 @@ module Network.AWS.Wolf
   ) where
 
 import Network.AWS.Wolf.Act     as Exports
+import Network.AWS.Wolf.Count   as Exports
 import Network.AWS.Wolf.Decide  as Exports
 import Network.AWS.Wolf.Prelude as Exports
