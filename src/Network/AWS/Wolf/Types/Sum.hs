@@ -16,6 +16,7 @@ data LabelType
   = LabelWolf
   | LabelAct
   | LabelDecide
+  | LabelCount
   deriving (Show, Eq)
 
 $(deriveJSON spinalOptions ''LabelType)

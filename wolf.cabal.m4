@@ -19,6 +19,7 @@ source-repository head
 library
   exposed-modules:     Network.AWS.Wolf
   other-modules:       Network.AWS.Wolf.Act
+                     , Network.AWS.Wolf.Count
                      , Network.AWS.Wolf.Ctx
                      , Network.AWS.Wolf.Decide
                      , Network.AWS.Wolf.File
@@ -70,6 +71,15 @@ executable wolf-actor
 executable wolf-decider
   hs-source-dirs:      main
   main-is:             decider.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall
+  build-depends:       base
+                     , wolf
+                     , optparse-generic
+  default-language:    Haskell2010
+
+executable wolf-counter
+  hs-source-dirs:      main
+  main-is:             counter.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall
   build-depends:       base
                      , wolf
