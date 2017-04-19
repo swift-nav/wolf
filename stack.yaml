@@ -4,4 +4,4 @@ packages:
 resolver: lts-6.30
 extra-deps:
 - preamble-0.0.32
-- shakers-0.0.16
+- shakers-0.0.17
