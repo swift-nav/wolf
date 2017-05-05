@@ -28,7 +28,14 @@ import Network.HTTP.Types
 catcher :: MonadStatsCtx c m => SomeException -> m a
 catcher e = do
   traceError "exception" [ "error" .= displayException e ]
-  statsCount "wolf.exception" (1 :: Int) mempty
+  throwIO e
+
+-- | Like catcher, but with stats.
+--
+catcher' :: MonadStatsCtx c m => SomeException -> m a
+catcher' e = do
+  traceError "exception" [ "error" .= displayException e ]
+  statsIncrement "wolf.exception" [ "reason" =. show e ]
   throwIO e
 
 -- | Run configuration context.
@@ -41,7 +48,7 @@ runConfCtx conf action = do
         , "prefix" .= (conf ^. cPrefix)
         ]
   c <- view statsCtx <&> cPreamble <>~ preamble
-  runTransT (ConfCtx c conf) $ catch action catcher
+  runTransT (ConfCtx c conf) $ catch action catcher'
 
 -- | Update configuration context's preamble.
 --
@@ -84,7 +91,7 @@ preAmazonStoreCtx preamble action = do
 throttled :: MonadAmazon c m => m a -> m a
 throttled action = do
   traceError "throttled" mempty
-  statsCount "wolf.throttled" (1 :: Int) mempty
+  statsIncrement "wolf.throttled" mempty
   liftIO $ threadDelay $ 5 * 1000000
   catch action $ throttler action
 

@@ -96,7 +96,7 @@ decide p =
         t0 <- liftIO getCurrentTime
         (token, hes) <- pollDecision
         t1 <- liftIO getCurrentTime
-        statsCount "wolf.decide.poll.count" (1 :: Int) [ "queue" =. queue ]
+        statsIncrement "wolf.decide.poll.count" [ "queue" =. queue ]
         statsHistogram "wolf.decide.poll.elapsed" (realToFrac (diffUTCTime t1 t0) :: Double) [ "queue" =. queue ]
         maybe_ token $ \token' ->
           runAmazonDecisionCtx p hes $ do
@@ -106,7 +106,7 @@ decide p =
               completeDecision token'
             t3 <- liftIO getCurrentTime
             traceInfo "finish" mempty
-            statsCount "wolf.decide.decision.count" (1 :: Int) [ "queue" =. queue ]
+            statsIncrement "wolf.decide.decision.count" [ "queue" =. queue ]
             statsHistogram "wolf.decide.decision.elapsed" (realToFrac (diffUTCTime t3 t2) :: Double) [ "queue" =. queue ]
 
 -- | Run decider from main with config file.
