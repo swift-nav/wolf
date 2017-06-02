@@ -14,31 +14,36 @@ import Data.Time
 import Network.AWS.Wolf.Ctx
 import Network.AWS.Wolf.File
 import Network.AWS.Wolf.Prelude
-import Network.AWS.Wolf.S3
 import Network.AWS.Wolf.SWF
 import Network.AWS.Wolf.Types
 import System.Process
+
+-- | S3 copy call.
+--
+cp :: MonadIO m => FilePath -> FilePath -> m ()
+cp f t = liftIO $ callProcess "aws" [ "s3", "cp", "--recursive", f, t ]
+
+-- | Key to download and upload objects from.
+--
+key :: MonadAmazonStore c m => m FilePath
+key = do
+  b <- view cBucket <$> view ccConf
+  p <- view ascPrefix
+  return $ "s3:/" -/- textToString b -/- textToString p
 
 -- | Download artifacts to the store input directory.
 --
 download :: MonadAmazonStore c m => FilePath -> m ()
 download dir = do
-  ks <- listArtifacts
-  forM_ ks $ \k -> do
-    traceInfo "get-artifact" [ "key" .= k ]
-    let file = dir </> textToString k
-    touchDirectory file
-    getArtifact file k
+  traceInfo "download" [ "dir" .= dir ]
+  flip cp dir =<< key
 
 -- | Upload artifacts from the store output directory.
 --
 upload :: MonadAmazonStore c m => FilePath -> m ()
 upload dir = do
-  fs <- findRegularFiles dir
-  forM_ fs $ \f -> do
-    let k = stripPrefix' (textFromString dir) (textFromString f)
-    traceInfo "put-artifact" [ "key" .= k ]
-    traverse (putArtifact f) k
+  traceInfo "upload" [ "dir" .= dir ]
+  cp dir =<< key
 
 -- | callCommand wrapper that maybe returns an exception.
 --
