@@ -46,7 +46,6 @@ library
                      , http-types
                      , lifted-async
                      , monad-control
-                     , optparse-applicative
                      , preamble
                      , process
                      , resourcet
