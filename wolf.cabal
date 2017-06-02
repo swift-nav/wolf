@@ -39,8 +39,6 @@ library
                      , base == 4.8.*
                      , bytestring
                      , conduit
-                     , conduit-combinators
-                     , conduit-extra
                      , directory
                      , exceptions
                      , filemanip
