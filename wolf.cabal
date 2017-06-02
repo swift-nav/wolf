@@ -24,7 +24,6 @@ library
                      , Network.AWS.Wolf.Decide
                      , Network.AWS.Wolf.File
                      , Network.AWS.Wolf.Prelude
-                     , Network.AWS.Wolf.S3
                      , Network.AWS.Wolf.SWF
                      , Network.AWS.Wolf.Types
                      , Network.AWS.Wolf.Types.Ctx
@@ -36,7 +35,6 @@ library
   build-depends:       aeson
                      , amazonka
                      , amazonka-core
-                     , amazonka-s3
                      , amazonka-swf
                      , base == 4.8.*
                      , bytestring
