@@ -11,7 +11,7 @@ module Network.AWS.Wolf.Prelude
 
 import Control.Concurrent.Async.Lifted
 import Control.Monad.Trans.Control
-import Preamble                        as Exports hiding (stripPrefix)
+import Preamble                        as Exports
 
 -- | Run a list of actions concurrently.
 --
