@@ -21,7 +21,7 @@ import System.Process
 -- | S3 copy call.
 --
 cp :: MonadIO m => FilePath -> FilePath -> m ()
-cp f t = liftIO $ callProcess "aws" [ "s3", "cp", "--recursive", f, t ]
+cp f t = liftIO $ callProcess "aws" [ "s3", "cp", "--quiet", "--recursive", f, t ]
 
 -- | Key to download and upload objects from.
 --
