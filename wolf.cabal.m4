@@ -34,7 +34,6 @@ library
   ghc-options:         -Wall
   build-depends:       aeson
                      , amazonka
-                     , amazonka-core
                      , amazonka-swf
                      , base == 4.8.*
                      , bytestring
@@ -49,7 +48,6 @@ library
                      , preamble
                      , process
                      , resourcet
-                     , text
                      , time
                      , uuid
                      , yaml
