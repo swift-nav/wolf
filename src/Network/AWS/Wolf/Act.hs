@@ -80,8 +80,8 @@ act queue command =
           maybe_ uid $ \uid' ->
             withCurrentWorkDirectory uid' $ \wd ->
               runAmazonStoreCtx uid' $ do
-                traceInfo "start" [ "input" .= input, "dir" .= wd ]
-                t2 <- liftIO getCurrentTime
+                traceInfo "start" [ "dir" .= wd ]
+                t2  <- liftIO getCurrentTime
                 dd  <- dataDirectory wd
                 sd  <- storeDirectory wd
                 isd <- inputDirectory sd
@@ -94,7 +94,7 @@ act queue command =
                 output <- readText (dd </> "output.json")
                 maybe (completeActivity token' output) (const $ failActivity token') e
                 t3 <- liftIO getCurrentTime
-                traceInfo "finish" [ "output" .= output ]
+                traceInfo "finish" [ "dir" .= wd ]
                 let status = textFromString $ maybe "complete" (const "fail") e
                 statsIncrement "wolf.act.activity.count" [ "queue" =. queue, "status" =. status ]
                 statsHistogram "wolf.act.activity.elapsed" (realToFrac (diffUTCTime t3 t2) :: Double) [ "queue" =. queue ]
