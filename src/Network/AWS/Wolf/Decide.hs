@@ -120,4 +120,4 @@ decideMain cf pf =
         runConfCtx conf $ do
           plans <- readYaml pf
           runConcurrent $
-            (forever . decide) <$> plans
+            forever . decide <$> plans
