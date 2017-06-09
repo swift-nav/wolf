@@ -44,6 +44,7 @@ library
                      , filepath
                      , http-types
                      , lifted-async
+                     , lifted-base
                      , monad-control
                      , preamble
                      , process

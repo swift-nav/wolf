@@ -6,16 +6,13 @@ module Network.AWS.Wolf.Ctx
   ( runConfCtx
   , preConfCtx
   , runAmazonCtx
-  , preAmazonCtx
   , runAmazonStoreCtx
-  , preAmazonStoreCtx
   , runAmazonWorkCtx
-  , preAmazonWorkCtx
   , runAmazonDecisionCtx
-  , preAmazonDecisionCtx
   ) where
 
 import Control.Concurrent
+import Control.Exception.Lifted
 import Control.Monad.Trans.AWS
 import Data.Aeson
 import Network.AWS.SWF
@@ -23,20 +20,40 @@ import Network.AWS.Wolf.Prelude
 import Network.AWS.Wolf.Types
 import Network.HTTP.Types
 
--- | Handler for exceptions, traces and rethrows.
+-- | Catcher for exceptions, traces and rethrows.
 --
-catcher :: MonadStatsCtx c m => SomeException -> m a
-catcher e = do
-  traceError "exception" [ "error" .= displayException e ]
-  throwIO e
+botSomeExceptionCatch :: MonadCtx c m => SomeException -> m a
+botSomeExceptionCatch ex = do
+  traceError "exception" [ "error" .= displayException ex ]
+  throwIO ex
 
--- | Like catcher, but with stats.
+-- | Catch TransportError's.
 --
-catcher' :: MonadStatsCtx c m => SomeException -> m a
-catcher' e = do
-  traceError "exception" [ "error" .= displayException e ]
-  statsIncrement "wolf.exception" [ "reason" =. show e ]
-  throwIO e
+botErrorCatch :: MonadCtx c m => Error -> m a
+botErrorCatch ex = do
+  case ex of
+    TransportError _ ->
+      return ()
+    _ ->
+      traceError "exception" [ "error" .= displayException ex ]
+  throwIO ex
+
+-- | Catcher for exceptions, emits stats and rethrows.
+--
+topSomeExceptionCatch :: MonadStatsCtx c m => SomeException -> m a
+topSomeExceptionCatch ex = do
+  statsIncrement "exception" [ "reason" =. show ex ]
+  throwIO ex
+
+-- | Run bottom TransT.
+--
+runBotTransT :: (MonadMain m, HasCtx c) => c -> TransT c m a -> m a
+runBotTransT c action = runTransT c $ catches action [ Handler botErrorCatch, Handler botSomeExceptionCatch ]
+
+-- | Run top TransT.
+--
+runTopTransT :: (MonadMain m, HasStatsCtx c) => c -> TransT c m a -> m a
+runTopTransT c action = runBotTransT c $ catch action topSomeExceptionCatch
 
 -- | Run configuration context.
 --
@@ -48,14 +65,14 @@ runConfCtx conf action = do
         , "prefix" .= (conf ^. cPrefix)
         ]
   c <- view statsCtx <&> cPreamble <>~ preamble
-  runTransT (ConfCtx c conf) $ catch action catcher'
+  runTopTransT (ConfCtx c conf) action
 
 -- | Update configuration context's preamble.
 --
 preConfCtx :: MonadConf c m => Pairs -> TransT ConfCtx m a -> m a
 preConfCtx preamble action = do
   c <- view confCtx <&> cPreamble <>~ preamble
-  runTransT c $ catch action catcher
+  runBotTransT c action
 
 -- | Run amazon context.
 --
@@ -63,14 +80,7 @@ runAmazonCtx :: MonadConf c m => TransT AmazonCtx m a -> m a
 runAmazonCtx action = do
   c <- view confCtx
   e <- newEnv Oregon $ FromEnv "AWS_ACCESS_KEY_ID" "AWS_SECRET_ACCESS_KEY" mempty
-  runTransT (AmazonCtx c e) $ catch action catcher
-
--- | Update amazon context's preamble.
---
-preAmazonCtx :: MonadAmazon c m => Pairs -> TransT AmazonCtx m a -> m a
-preAmazonCtx preamble action = do
-  c <- view amazonCtx <&> cPreamble <>~ preamble
-  runTransT c $ catch action catcher
+  runBotTransT (AmazonCtx c e) action
 
 -- | Run amazon store context.
 --
@@ -79,15 +89,10 @@ runAmazonStoreCtx uid action = do
   let preamble = [ "uid" .= uid ]
   c <- view amazonCtx <&> cPreamble <>~ preamble
   p <- (-/- uid) . view cPrefix <$> view ccConf
-  runTransT (AmazonStoreCtx c uid p) $ catch action catcher
+  runBotTransT (AmazonStoreCtx c uid p) action
 
--- | Update amazon context's preamble.
+-- | Throttle throttle exceptions.
 --
-preAmazonStoreCtx :: MonadAmazonStore c m => Pairs -> TransT AmazonStoreCtx m a -> m a
-preAmazonStoreCtx preamble action = do
-  c <- view amazonStoreCtx <&> cPreamble <>~ preamble
-  runTransT c $ catch action catcher
-
 throttled :: MonadAmazon c m => m a -> m a
 throttled action = do
   traceError "throttled" mempty
@@ -113,14 +118,7 @@ runAmazonWorkCtx :: MonadAmazon c m => Text -> TransT AmazonWorkCtx m a -> m a
 runAmazonWorkCtx queue action = do
   let preamble = [ "queue" .= queue ]
   c <- view amazonCtx <&> cPreamble <>~ preamble
-  runTransT (AmazonWorkCtx c queue) $ catch (catch action $ throttler action) catcher
-
--- | Update amazon context's preamble.
---
-preAmazonWorkCtx :: MonadAmazonWork c m => Pairs -> TransT AmazonWorkCtx m a -> m a
-preAmazonWorkCtx preamble action = do
-  c <- view amazonWorkCtx <&> cPreamble <>~ preamble
-  runTransT c $ catch action catcher
+  runBotTransT (AmazonWorkCtx c queue) (catch action $ throttler action)
 
 -- | Run amazon decision context.
 --
@@ -128,11 +126,4 @@ runAmazonDecisionCtx :: MonadAmazon c m => Plan -> [HistoryEvent] -> TransT Amaz
 runAmazonDecisionCtx p hes action = do
   let preamble = [ "name" .= (p ^. pStart ^. tName) ]
   c <- view amazonCtx <&> cPreamble <>~ preamble
-  runTransT (AmazonDecisionCtx c p hes) $ catch action catcher
-
--- | Update amazon context's preamble.
---
-preAmazonDecisionCtx :: MonadAmazonDecision c m => Pairs -> TransT AmazonDecisionCtx m a -> m a
-preAmazonDecisionCtx preamble action = do
-  c <- view amazonDecisionCtx <&> cPreamble <>~ preamble
-  runTransT c $ catch action catcher
+  runBotTransT (AmazonDecisionCtx c p hes) action
