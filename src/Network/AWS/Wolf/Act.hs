@@ -47,7 +47,7 @@ upload dir = do
 
 -- | callCommand wrapper that maybe returns an exception.
 --
-callCommand' :: MonadMain m => String -> m (Maybe SomeException)
+callCommand' :: MonadControl m => String -> m (Maybe SomeException)
 callCommand' command =
   handle (return . Just) $ do
     liftIO $ callCommand command
@@ -104,9 +104,8 @@ act queue command =
 --
 actMain :: MonadControl m => FilePath -> Text -> String -> m ()
 actMain cf queue command =
-  runResourceT $
-    runCtx $
-      runStatsCtx $ do
-        conf <- readYaml cf
-        runConfCtx conf $
-          forever $ act queue command
+  runCtx $
+    runStatsCtx $ do
+      conf <- readYaml cf
+      runConfCtx conf $
+        forever $ act queue command

@@ -45,10 +45,8 @@ library
                      , http-types
                      , lifted-async
                      , lifted-base
-                     , monad-control
                      , preamble
                      , process
-                     , resourcet
                      , time
                      , uuid
                      , yaml

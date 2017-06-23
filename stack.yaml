@@ -1,7 +1,7 @@
 flags: {}
 packages:
 - .
-resolver: lts-6.30
+resolver: lts-6.35
 extra-deps:
-- preamble-0.0.37
+- preamble-0.0.39
 - shakers-0.0.18

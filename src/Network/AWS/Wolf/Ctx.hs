@@ -47,12 +47,12 @@ topSomeExceptionCatch ex = do
 
 -- | Run bottom TransT.
 --
-runBotTransT :: (MonadMain m, HasCtx c) => c -> TransT c m a -> m a
+runBotTransT :: (MonadControl m, HasCtx c) => c -> TransT c m a -> m a
 runBotTransT c action = runTransT c $ catches action [ Handler botErrorCatch, Handler botSomeExceptionCatch ]
 
 -- | Run top TransT.
 --
-runTopTransT :: (MonadMain m, HasStatsCtx c) => c -> TransT c m a -> m a
+runTopTransT :: (MonadControl m, HasStatsCtx c) => c -> TransT c m a -> m a
 runTopTransT c action = runBotTransT c $ catch action topSomeExceptionCatch
 
 -- | Run configuration context.
@@ -84,16 +84,16 @@ runAmazonCtx action = do
 
 -- | Run amazon store context.
 --
-runAmazonStoreCtx :: MonadAmazon c m => Text -> TransT AmazonStoreCtx m a -> m a
+runAmazonStoreCtx :: MonadConf c m => Text -> TransT AmazonStoreCtx m a -> m a
 runAmazonStoreCtx uid action = do
   let preamble = [ "uid" .= uid ]
-  c <- view amazonCtx <&> cPreamble <>~ preamble
+  c <- view confCtx <&> cPreamble <>~ preamble
   p <- (-/- uid) . view cPrefix <$> view ccConf
   runBotTransT (AmazonStoreCtx c uid p) action
 
 -- | Throttle throttle exceptions.
 --
-throttled :: MonadAmazon c m => m a -> m a
+throttled :: MonadStatsCtx c m => m a -> m a
 throttled action = do
   traceError "throttled" mempty
   statsIncrement "wolf.throttled" mempty
@@ -102,7 +102,7 @@ throttled action = do
 
 -- | Amazon throttle handler.
 --
-throttler :: MonadAmazon c m => m a -> Error -> m a
+throttler :: MonadStatsCtx c m => m a -> Error -> m a
 throttler action e =
   case e of
     ServiceError se ->
@@ -114,16 +114,16 @@ throttler action e =
 
 -- | Run amazon work context.
 --
-runAmazonWorkCtx :: MonadAmazon c m => Text -> TransT AmazonWorkCtx m a -> m a
+runAmazonWorkCtx :: MonadConf c m => Text -> TransT AmazonWorkCtx m a -> m a
 runAmazonWorkCtx queue action = do
   let preamble = [ "queue" .= queue ]
-  c <- view amazonCtx <&> cPreamble <>~ preamble
+  c <- view confCtx <&> cPreamble <>~ preamble
   runBotTransT (AmazonWorkCtx c queue) (catch action $ throttler action)
 
 -- | Run amazon decision context.
 --
-runAmazonDecisionCtx :: MonadAmazon c m => Plan -> [HistoryEvent] -> TransT AmazonDecisionCtx m a -> m a
+runAmazonDecisionCtx :: MonadConf c m => Plan -> [HistoryEvent] -> TransT AmazonDecisionCtx m a -> m a
 runAmazonDecisionCtx p hes action = do
   let preamble = [ "name" .= (p ^. pStart ^. tName) ]
-  c <- view amazonCtx <&> cPreamble <>~ preamble
+  c <- view confCtx <&> cPreamble <>~ preamble
   runBotTransT (AmazonDecisionCtx c p hes) action

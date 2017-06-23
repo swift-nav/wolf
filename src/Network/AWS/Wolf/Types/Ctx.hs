@@ -72,21 +72,18 @@ type MonadAmazon c m =
 -- Amazon store context.
 --
 data AmazonStoreCtx = AmazonStoreCtx
-  { _ascAmazonCtx :: AmazonCtx
+  { _ascConfCtx :: ConfCtx
     -- ^ Parent context.
-  , _ascUid       :: Text
+  , _ascUid     :: Text
     -- ^ Workflow uid.
-  , _ascPrefix    :: Text
+  , _ascPrefix  :: Text
     -- ^ Object prefix.
   }
 
-$(makeClassyConstraints ''AmazonStoreCtx [''HasAmazonCtx])
-
-instance HasAmazonCtx AmazonStoreCtx where
-  amazonCtx = ascAmazonCtx
+$(makeClassyConstraints ''AmazonStoreCtx [''HasConfCtx])
 
 instance HasConfCtx AmazonStoreCtx where
-   confCtx = amazonCtx . acConfCtx
+   confCtx = ascConfCtx
 
 instance HasStatsCtx AmazonStoreCtx where
   statsCtx = confCtx . statsCtx
@@ -94,11 +91,8 @@ instance HasStatsCtx AmazonStoreCtx where
 instance HasCtx AmazonStoreCtx where
   ctx = statsCtx . ctx
 
-instance HasEnv AmazonStoreCtx where
-   environment = amazonCtx . acEnv
-
 type MonadAmazonStore c m =
-   ( MonadAmazon c m
+   ( MonadConf c m
    , HasAmazonStoreCtx c
    )
 
@@ -107,19 +101,16 @@ type MonadAmazonStore c m =
 -- Amazon work context.
 --
 data AmazonWorkCtx = AmazonWorkCtx
-  { _awcAmazonCtx :: AmazonCtx
+  { _awcConfCtx :: ConfCtx
     -- ^ Parent context.
-  , _awcQueue     :: Text
+  , _awcQueue   :: Text
     -- ^ Workflow queue.
   }
 
-$(makeClassyConstraints ''AmazonWorkCtx [''HasAmazonCtx])
-
-instance HasAmazonCtx AmazonWorkCtx where
-  amazonCtx = awcAmazonCtx
+$(makeClassyConstraints ''AmazonWorkCtx [''HasConfCtx])
 
 instance HasConfCtx AmazonWorkCtx where
-   confCtx = amazonCtx . acConfCtx
+   confCtx = awcConfCtx
 
 instance HasStatsCtx AmazonWorkCtx where
   statsCtx = confCtx . statsCtx
@@ -127,11 +118,8 @@ instance HasStatsCtx AmazonWorkCtx where
 instance HasCtx AmazonWorkCtx where
   ctx = statsCtx . ctx
 
-instance HasEnv AmazonWorkCtx where
-   environment = amazonCtx . acEnv
-
 type MonadAmazonWork c m =
-   ( MonadAmazon c m
+   ( MonadConf c m
    , HasAmazonWorkCtx c
    )
 
@@ -140,21 +128,18 @@ type MonadAmazonWork c m =
 -- Amazon decision context.
 --
 data AmazonDecisionCtx = AmazonDecisionCtx
-  { _adcAmazonCtx :: AmazonCtx
+  { _adcConfCtx :: ConfCtx
     -- ^ Parent context.
-  , _adcPlan      :: Plan
+  , _adcPlan    :: Plan
     -- ^ Decision plan.
-  , _adcEvents    :: [HistoryEvent]
+  , _adcEvents  :: [HistoryEvent]
     -- ^ History events.
   }
 
-$(makeClassyConstraints ''AmazonDecisionCtx [''HasAmazonCtx])
-
-instance HasAmazonCtx AmazonDecisionCtx where
-  amazonCtx = adcAmazonCtx
+$(makeClassyConstraints ''AmazonDecisionCtx [''HasConfCtx])
 
 instance HasConfCtx AmazonDecisionCtx where
-   confCtx = amazonCtx . acConfCtx
+   confCtx = adcConfCtx
 
 instance HasStatsCtx AmazonDecisionCtx where
   statsCtx = confCtx . statsCtx
@@ -162,11 +147,8 @@ instance HasStatsCtx AmazonDecisionCtx where
 instance HasCtx AmazonDecisionCtx where
   ctx = statsCtx . ctx
 
-instance HasEnv AmazonDecisionCtx where
-   environment = amazonCtx . acEnv
-
 type MonadAmazonDecision c m =
-   ( MonadAmazon c m
+   ( MonadConf c m
    , HasAmazonDecisionCtx c
    )
 
