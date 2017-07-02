@@ -1,0 +1,13 @@
+flags: {}
+packages:
+- .
+resolver: lts-5.18
+pvp-bounds: lower
+extra-deps:
+- preamble-0.0.43
+- shakers-0.0.25
+- optparse-generic-1.2.1
+- amazonka-1.4.3
+- amazonka-core-1.4.3
+- amazonka-swf-1.4.3
+- unordered-containers-0.2.7.0

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP               #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -42,7 +43,11 @@ botErrorCatch ex = do
 --
 topSomeExceptionCatch :: MonadStatsCtx c m => SomeException -> m a
 topSomeExceptionCatch ex = do
+#if MIN_VERSION_basic_prelude(0,6,1)
+  statsIncrement "exception" [ "reason" =. textFromString (show ex) ]
+#else
   statsIncrement "exception" [ "reason" =. show ex ]
+#endif
   throwIO ex
 
 -- | Run bottom TransT.
@@ -79,7 +84,11 @@ preConfCtx preamble action = do
 runAmazonCtx :: MonadConf c m => TransT AmazonCtx m a -> m a
 runAmazonCtx action = do
   c <- view confCtx
+#if MIN_VERSION_amazonka(1,4,5)
+  e <- newEnv $ FromEnv "AWS_ACCESS_KEY_ID" "AWS_SECRET_ACCESS_KEY" mempty mempty
+#else
   e <- newEnv Oregon $ FromEnv "AWS_ACCESS_KEY_ID" "AWS_SECRET_ACCESS_KEY" mempty
+#endif
   runBotTransT (AmazonCtx c e) action
 
 -- | Run amazon store context.

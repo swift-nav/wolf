@@ -134,8 +134,8 @@ withWorkDirectory uid =
 
 -- | Change to directory and then return to current directory.
 --
-withCurrentDirectory :: MonadControl m => FilePath -> (FilePath -> m a) -> m a
-withCurrentDirectory wd action =
+withCurrentDirectory' :: MonadControl m => FilePath -> (FilePath -> m a) -> m a
+withCurrentDirectory' wd action =
   bracket (liftIO getCurrentDirectory) (liftIO . setCurrentDirectory) $ \cd -> do
     liftIO $ setCurrentDirectory wd
     action cd
@@ -145,7 +145,7 @@ withCurrentDirectory wd action =
 withCurrentWorkDirectory :: MonadControl m => Text -> (FilePath -> m a) -> m a
 withCurrentWorkDirectory uid action =
   withWorkDirectory uid $ \wd ->
-    withCurrentDirectory wd $ \cd -> do
+    withCurrentDirectory' wd $ \cd -> do
       copyDirectoryRecursive cd wd
       action wd
 
