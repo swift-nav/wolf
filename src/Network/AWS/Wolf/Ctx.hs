@@ -43,11 +43,7 @@ botErrorCatch ex = do
 --
 topSomeExceptionCatch :: MonadStatsCtx c m => SomeException -> m a
 topSomeExceptionCatch ex = do
-#if MIN_VERSION_basic_prelude(0,6,1)
-  statsIncrement "exception" [ "reason" =. textFromString (show ex) ]
-#else
-  statsIncrement "exception" [ "reason" =. show ex ]
-#endif
+  statsIncrement "exception" [ "reason" =. textFromString (displayException ex) ]
   throwIO ex
 
 -- | Run bottom TransT.
