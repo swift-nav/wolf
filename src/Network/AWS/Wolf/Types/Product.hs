@@ -26,7 +26,7 @@ $(deriveJSON spinalOptions ''Conf)
 
 -- | Control
 --
-data Control = Control
+newtype Control = Control
   { _cRunUid :: Text
     -- ^ Run uid of workflow.
   } deriving (Show, Eq)
