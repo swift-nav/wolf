@@ -21,10 +21,11 @@ main = shakeMain $ do
         , "main//*.hs"
         , "src//*.hs"
         ]
+      pats' = delete "stack.yaml" pats
 
   -- | Haskell rules.
   --
-  hsRules "."
+  hsRules "." pats'
 
   -- | Cabal rules.
   --
