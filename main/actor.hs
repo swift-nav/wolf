@@ -16,6 +16,10 @@ data Args = Args
     -- ^ Configuration file.
   , queue   :: Text
     -- ^ Queue to listen to act on.
+  , num     :: Maybe Int
+    -- ^ Number of actors to run concurrently.
+  , nocopy  :: Bool
+    -- ^ Copy working directory.
   , command :: String
     -- ^ Command to run.
   } deriving (Show, Generic)
@@ -30,4 +34,6 @@ main = do
   actMain
     (config args)
     (queue args)
+    (fromMaybe 1 $ num args)
+    (nocopy args)
     (command args)

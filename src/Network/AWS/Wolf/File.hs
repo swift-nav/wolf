@@ -142,10 +142,11 @@ withCurrentDirectory' wd action =
 
 -- | Setup a temporary work directory and copy current directory files to it.
 --
-withCurrentWorkDirectory :: MonadControl m => Text -> (FilePath -> m a) -> m a
-withCurrentWorkDirectory uid action =
+withCurrentWorkDirectory :: MonadControl m => Text -> Bool -> (FilePath -> m a) -> m a
+withCurrentWorkDirectory uid nocopy action =
   withWorkDirectory uid $ \wd ->
     withCurrentDirectory' wd $ \cd -> do
-      copyDirectoryRecursive cd wd
+      unless nocopy $
+        copyDirectoryRecursive cd wd
       action wd
 
