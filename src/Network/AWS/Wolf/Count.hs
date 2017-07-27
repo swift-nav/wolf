@@ -23,7 +23,7 @@ countActivity t = do
   let queue = t ^. tQueue
   runAmazonWorkCtx queue $ do
     c <- countActivities
-    traceInfo "count-acitivities" [ "task" .= t, "count" .= c ]
+    traceInfo "count-activities" [ "task" .= t, "count" .= c ]
     statsGauge "wolf.act.queue.depth" c [ "queue" =. queue ]
 
 -- | Count open workflows.
