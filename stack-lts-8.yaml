@@ -1,7 +1,6 @@
-flags: {}
+resolver: lts-8.24
 packages:
 - .
-resolver: lts-8.24
 pvp-bounds: lower
 extra-deps:
 - preamble-0.0.47
