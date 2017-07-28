@@ -1,7 +1,6 @@
 resolver: lts-6.35
 packages:
 - .
-pvp-bounds: lower
 extra-deps:
-- preamble-0.0.47
-- shakers-0.0.27
+- preamble-0.0.48
+- shakers-0.0.28
