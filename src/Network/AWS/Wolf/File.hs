@@ -46,7 +46,7 @@ dataDirectory :: MonadIO m => FilePath -> m FilePath
 dataDirectory dir = do
   let dir' = dir </> "data"
   liftIO $ createDirectoryIfMissing True dir'
-  return dir'
+  pure dir'
 
 -- | Determine path to store directory and create it.
 --
@@ -54,7 +54,7 @@ storeDirectory :: MonadIO m => FilePath -> m FilePath
 storeDirectory dir = do
   let dir' = dir </> "store"
   liftIO $ createDirectoryIfMissing True dir'
-  return dir'
+  pure dir'
 
 -- | Determine path to store input directory and create it.
 --
@@ -62,7 +62,7 @@ inputDirectory :: MonadIO m => FilePath -> m FilePath
 inputDirectory dir = do
   let dir' = dir </> "input"
   liftIO $ createDirectoryIfMissing True dir'
-  return dir'
+  pure dir'
 
 -- | Determine path to store output directory and create it.
 --
@@ -70,7 +70,7 @@ outputDirectory :: MonadIO m => FilePath -> m FilePath
 outputDirectory dir = do
   let dir' = dir </> "output"
   liftIO $ createDirectoryIfMissing True dir'
-  return dir'
+  pure dir'
 
 -- | Maybe write text to a file.
 --
@@ -84,8 +84,8 @@ readText :: MonadIO m => FilePath -> m (Maybe Text)
 readText file =
  liftIO $ do
    b <- doesFileExist file
-   if not b then return mempty else
-     return <$> readFile file
+   if not b then pure mempty else
+     pure <$> readFile file
 
 -- | Encode from JSON and write file.
 --
@@ -111,7 +111,7 @@ getWorkDirectory uid =
     time <- getCurrentTime
     let dir = td </> formatTime defaultTimeLocale "%FT%T%z" time </> textToString uid
     createDirectoryIfMissing True dir
-    return dir
+    pure dir
 
 -- | Copy directory contents recursively.
 --

@@ -29,7 +29,7 @@ key :: MonadAmazonStore c m => m FilePath
 key = do
   b <- view cBucket <$> view ccConf
   p <- view ascPrefix
-  return $ "s3:/" -/- textToString b -/- textToString p
+  pure $ "s3:/" -/- textToString b -/- textToString p
 
 -- | Download artifacts to the store input directory.
 --
@@ -49,9 +49,9 @@ upload dir = do
 --
 callCommand' :: MonadControl m => String -> m (Maybe SomeException)
 callCommand' command =
-  handle (return . Just) $ do
+  handle (pure . Just) $ do
     liftIO $ callCommand command
-    return Nothing
+    pure Nothing
 
 -- | Run command and maybe returns an exception.
 --
@@ -61,7 +61,7 @@ run command =
     traceInfo "begin" mempty
     e <- callCommand' command
     traceInfo "end" [ "exception" .= (displayException <$> e) ]
-    return e
+    pure e
 
 -- | Actor logic - poll for work, download artifacts, run command, upload artifacts.
 --

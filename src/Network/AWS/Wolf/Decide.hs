@@ -25,7 +25,7 @@ import Network.AWS.Wolf.Types
 end :: MonadAmazonDecision c m => Maybe Text -> m Decision
 end input = do
   traceInfo "end" mempty
-  return $ completeWork input
+  pure $ completeWork input
 
 -- | Next activity in workflow to run.
 --
@@ -33,14 +33,14 @@ next :: MonadAmazonDecision c m => Maybe Text -> Task -> m Decision
 next input t = do
   uid <- liftIO $ toText <$> nextRandom
   traceInfo "next" [ "uid" .= uid, "task" .= t ]
-  return $ scheduleWork uid (t ^. tName) (t ^. tVersion) (t ^. tQueue) input
+  pure $ scheduleWork uid (t ^. tName) (t ^. tVersion) (t ^. tQueue) input
 
 -- | Failed activity, stop the workflow.
 --
 failed :: MonadAmazonDecision c m => m Decision
 failed = do
   traceInfo "failed" mempty
-  return failWork
+  pure failWork
 
 -- | Completed activity, start the next activity.
 --
@@ -52,7 +52,7 @@ completed he = do
     atcea <- he ^. heActivityTaskCompletedEventAttributes
     he'   <- flip find hes $ (== atcea ^. atceaScheduledEventId) . view heEventId
     name  <- view atName . view atseaActivityType <$> he' ^. heActivityTaskScheduledEventAttributes
-    return (atcea ^. atceaResult, name)
+    pure (atcea ^. atceaResult, name)
   p <- view adcPlan
   maybe (end input) (next input) $
     join $ fmap headMay $ tailMay $ flip dropWhile (p ^. pTasks) $ (/= name) . view tName
@@ -76,7 +76,7 @@ schedule = do
   f hes >>=
     maybeThrowIO' "No Select Information"
   where
-    f []       = return Nothing
+    f []       = pure Nothing
     f (he:hes) =
       case he ^. heEventType of
         WorkflowExecutionStarted -> Just <$> begin he

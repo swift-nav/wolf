@@ -1,6 +1,7 @@
-resolver: lts-6.35
+resolver: nightly-2017-08-10
 packages:
 - .
 extra-deps:
 - preamble-0.0.49
 - shakers-0.0.31
+

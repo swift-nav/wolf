@@ -34,7 +34,7 @@ botErrorCatch :: MonadCtx c m => Error -> m a
 botErrorCatch ex = do
   case ex of
     TransportError _ ->
-      return ()
+      pure ()
     _ ->
       traceError "exception" [ "error" .= displayException ex ]
   throwIO ex

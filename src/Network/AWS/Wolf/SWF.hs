@@ -32,7 +32,7 @@ pollActivity = do
   tl <- taskList <$> view awcQueue
   runResourceT $ runAmazonCtx $ do
     pfatrs <- send (pollForActivityTask d tl)
-    return
+    pure
       ( pfatrs ^. pfatrsTaskToken
       , view weWorkflowId <$> pfatrs ^. pfatrsWorkflowExecution
       , pfatrs ^. pfatrsInput
@@ -46,7 +46,7 @@ pollDecision = do
   tl     <- taskList <$> view awcQueue
   runResourceT $ runAmazonCtx $ do
     pfdtrs <- paginate (pollForDecisionTask d tl) $$ consume
-    return
+    pure
       ( join $ headMay $ map (view pfdtrsTaskToken) pfdtrs
       , reverse $ concatMap (view pfdtrsEvents) pfdtrs
       )
@@ -59,7 +59,7 @@ countActivities = do
   tl  <- taskList <$> view awcQueue
   runResourceT $ runAmazonCtx $ do
     ptc <- send (countPendingActivityTasks d tl)
-    return $ fromIntegral (ptc ^. ptcCount)
+    pure $ fromIntegral (ptc ^. ptcCount)
 
 -- | Count decisions.
 --
@@ -69,7 +69,7 @@ countDecisions = do
   tl  <- taskList <$> view awcQueue
   runResourceT $ runAmazonCtx $ do
     ptc <- send (countPendingDecisionTasks d tl)
-    return $ fromIntegral (ptc ^. ptcCount)
+    pure $ fromIntegral (ptc ^. ptcCount)
 
 -- | Successful job completion.
 --
@@ -90,18 +90,18 @@ failActivity token =
 completeDecision :: MonadConf c m => Text -> Decision -> m ()
 completeDecision token d =
   runResourceT $ runAmazonCtx $
-    void $ send $ set rdtcDecisions (return d) $ respondDecisionTaskCompleted token
+    void $ send $ set rdtcDecisions (pure d) $ respondDecisionTaskCompleted token
 
 -- | Schedule decision.
 --
 scheduleWork :: Text -> Text -> Text -> Text -> Maybe Text -> Decision
 scheduleWork uid name version queue input =
   decision ScheduleActivityTask &
-    dScheduleActivityTaskDecisionAttributes .~ return satda
+    dScheduleActivityTaskDecisionAttributes .~ pure satda
   where
     satda =
       scheduleActivityTaskDecisionAttributes (activityType name version) uid &
-        satdaTaskList .~ return (taskList queue) &
+        satdaTaskList .~ pure (taskList queue) &
         satdaInput .~ input
 
 -- | Complete decision.
@@ -109,7 +109,7 @@ scheduleWork uid name version queue input =
 completeWork :: Maybe Text -> Decision
 completeWork input =
   decision CompleteWorkflowExecution &
-    dCompleteWorkflowExecutionDecisionAttributes .~ return cweda
+    dCompleteWorkflowExecutionDecisionAttributes .~ pure cweda
   where
     cweda =
       completeWorkflowExecutionDecisionAttributes &
@@ -120,7 +120,7 @@ completeWork input =
 failWork :: Decision
 failWork =
   decision FailWorkflowExecution &
-    dFailWorkflowExecutionDecisionAttributes .~ return fweda
+    dFailWorkflowExecutionDecisionAttributes .~ pure fweda
   where
     fweda =
       failWorkflowExecutionDecisionAttributes

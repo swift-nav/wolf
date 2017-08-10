@@ -2,6 +2,6 @@ resolver: lts-8.24
 packages:
 - .
 extra-deps:
-- preamble-0.0.48
-- shakers-0.0.28
+- preamble-0.0.49
+- shakers-0.0.31
 - text-1.2.2.2
