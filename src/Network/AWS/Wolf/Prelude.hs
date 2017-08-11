@@ -15,4 +15,4 @@ import Preamble                        as Exports
 -- | Run a list of actions concurrently.
 --
 runConcurrent :: MonadBaseControl IO m => [m a] -> m ()
-runConcurrent = void . runConcurrently . sequenceA . map Concurrently
+runConcurrent = void . runConcurrently . traverse Concurrently
