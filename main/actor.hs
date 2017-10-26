@@ -20,6 +20,8 @@ data Args = Args
     -- ^ Number of actors to run concurrently.
   , nocopy  :: Bool
     -- ^ Copy working directory.
+  , local   :: Bool
+    -- ^ Run locally, not in a temp directory.
   , command :: String
     -- ^ Command to run.
   } deriving (Show, Generic)
@@ -36,4 +38,5 @@ main = do
     (queue args)
     (fromMaybe 1 $ num args)
     (nocopy args)
+    (local args)
     (command args)

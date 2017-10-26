@@ -65,8 +65,8 @@ run command =
 
 -- | Actor logic - poll for work, download artifacts, run command, upload artifacts.
 --
-act :: MonadConf c m => Text -> Bool -> String -> m ()
-act queue nocopy command =
+act :: MonadConf c m => Text -> Bool -> Bool -> String -> m ()
+act queue nocopy local command =
   preConfCtx [ "label" .= LabelAct ] $
     runAmazonCtx $
       runAmazonWorkCtx queue $ do
@@ -78,7 +78,7 @@ act queue nocopy command =
         statsHistogram "wolf.act.poll.elapsed" (realToFrac (diffUTCTime t1 t0) :: Double) [ "queue" =. queue ]
         maybe_ token $ \token' ->
           maybe_ uid $ \uid' ->
-            withCurrentWorkDirectory uid' nocopy $ \wd ->
+            withCurrentWorkDirectory uid' nocopy local $ \wd ->
               runAmazonStoreCtx uid' $ do
                 traceInfo "start" [ "dir" .= wd ]
                 t2  <- liftIO getCurrentTime
@@ -102,10 +102,10 @@ act queue nocopy command =
 
 -- | Run actor from main with config file.
 --
-actMain :: MonadControl m => FilePath -> Text -> Int -> Bool -> String -> m ()
-actMain cf queue num nocopy command =
+actMain :: MonadControl m => FilePath -> Text -> Int -> Bool -> Bool -> String -> m ()
+actMain cf queue num nocopy local command =
   runCtx $
     runStatsCtx $ do
       conf <- readYaml cf
       runConfCtx conf $
-        runConcurrent $ replicate num $ forever $ act queue nocopy command
+        runConcurrent $ replicate num $ forever $ act queue nocopy local command

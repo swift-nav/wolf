@@ -104,10 +104,10 @@ readYaml file =
 
 -- | Get a temporary timestamped work directory.
 --
-getWorkDirectory :: MonadIO m => Text -> m FilePath
-getWorkDirectory uid =
+getWorkDirectory :: MonadIO m => Text -> Bool -> m FilePath
+getWorkDirectory uid local =
   liftIO $ do
-    td   <- getTemporaryDirectory
+    td   <- bool getTemporaryDirectory getCurrentDirectory local
     time <- getCurrentTime
     let dir = td </> formatTime defaultTimeLocale "%FT%T%z" time </> textToString uid
     createDirectoryIfMissing True dir
@@ -128,9 +128,9 @@ copyDirectoryRecursive fd td =
 
 -- | Setup a temporary work directory.
 --
-withWorkDirectory :: MonadControl m => Text -> (FilePath -> m a) -> m a
-withWorkDirectory uid =
-  bracket (getWorkDirectory uid) (liftIO . removeDirectoryRecursive)
+withWorkDirectory :: MonadControl m => Text -> Bool -> (FilePath -> m a) -> m a
+withWorkDirectory uid local =
+  bracket (getWorkDirectory uid local) (liftIO . removeDirectoryRecursive)
 
 -- | Change to directory and then return to current directory.
 --
@@ -142,11 +142,11 @@ withCurrentDirectory' wd action =
 
 -- | Setup a temporary work directory and copy current directory files to it.
 --
-withCurrentWorkDirectory :: MonadControl m => Text -> Bool -> (FilePath -> m a) -> m a
-withCurrentWorkDirectory uid nocopy action =
-  withWorkDirectory uid $ \wd ->
+withCurrentWorkDirectory :: MonadControl m => Text -> Bool -> Bool -> (FilePath -> m a) -> m a
+withCurrentWorkDirectory uid nocopy local action =
+  withWorkDirectory uid local $ \wd ->
     withCurrentDirectory' wd $ \cd -> do
-      unless nocopy $
+      unless (nocopy || local) $
         copyDirectoryRecursive cd wd
       action wd
 
