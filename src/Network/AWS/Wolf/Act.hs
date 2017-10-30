@@ -16,6 +16,7 @@ import Network.AWS.Wolf.File
 import Network.AWS.Wolf.Prelude
 import Network.AWS.Wolf.SWF
 import Network.AWS.Wolf.Types
+import System.Directory
 import System.Process
 
 -- | S3 copy call.
@@ -63,6 +64,11 @@ run command =
     traceInfo "end" [ "exception" .= (displayException <$> e) ]
     pure e
 
+-- | Check if quiesce file is present.
+--
+check :: MonadIO m => Maybe FilePath -> m Bool
+check = maybe (pure False) (liftIO . doesFileExist)
+
 -- | Actor logic - poll for work, download artifacts, run command, upload artifacts.
 --
 act :: MonadConf c m => Text -> Bool -> Bool -> String -> m ()
@@ -102,10 +108,12 @@ act queue nocopy local command =
 
 -- | Run actor from main with config file.
 --
-actMain :: MonadControl m => FilePath -> Text -> Int -> Bool -> Bool -> String -> m ()
-actMain cf queue num nocopy local command =
+actMain :: MonadControl m => FilePath -> Maybe FilePath -> Text -> Int -> Bool -> Bool -> String -> m ()
+actMain cf quiesce queue num nocopy local command =
   runCtx $
     runStatsCtx $ do
       conf <- readYaml cf
       runConfCtx conf $
-        runConcurrent $ replicate num $ forever $ act queue nocopy local command
+        runConcurrent $ replicate num $ forever $ do
+          boolThrowIO "Quiesce" =<< not <$> check quiesce
+          act queue nocopy local command
