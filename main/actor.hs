@@ -14,6 +14,8 @@ import Options.Generic
 data Args = Args
   { config  :: FilePath
     -- ^ Configuration file.
+  , quiesce :: Maybe FilePath
+    -- ^ Optional quiesce file to stop actor.
   , queue   :: Text
     -- ^ Queue to listen to act on.
   , num     :: Maybe Int
@@ -35,6 +37,7 @@ main = do
   args <- getRecord "Actor"
   actMain
     (config args)
+    (quiesce args)
     (queue args)
     (fromMaybe 1 $ num args)
     (nocopy args)
