@@ -17,6 +17,7 @@ import Network.AWS.Wolf.Prelude
 import Network.AWS.Wolf.SWF
 import Network.AWS.Wolf.Types
 import System.Directory
+import System.Exit
 import System.Process
 
 -- | S3 copy call.
@@ -115,5 +116,7 @@ actMain cf quiesce queue num nocopy local command =
       conf <- readYaml cf
       runConfCtx conf $
         runConcurrent $ replicate num $ forever $ do
-          boolThrowIO "Quiesce" =<< not <$> check quiesce
+          ok <- check quiesce
+          when ok $
+            liftIO exitSuccess
           act queue nocopy local command
