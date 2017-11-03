@@ -81,9 +81,9 @@ runAmazonCtx :: MonadConf c m => TransT AmazonCtx m a -> m a
 runAmazonCtx action = do
   c <- view confCtx
 #if MIN_VERSION_amazonka(1,4,5)
-  c <- newEnv Discover
+  e <- newEnv Discover
 #else
-  c <- newEnv Oregon Discover
+  e <- newEnv Oregon Discover
 #endif
   runBotTransT (AmazonCtx c e) action
 
