@@ -81,9 +81,9 @@ runAmazonCtx :: MonadConf c m => TransT AmazonCtx m a -> m a
 runAmazonCtx action = do
   c <- view confCtx
 #if MIN_VERSION_amazonka(1,4,5)
-  e <- newEnv $ FromEnv "AWS_ACCESS_KEY_ID" "AWS_SECRET_ACCESS_KEY" mempty mempty
+  c <- newEnv Discover
 #else
-  e <- newEnv Oregon $ FromEnv "AWS_ACCESS_KEY_ID" "AWS_SECRET_ACCESS_KEY" mempty
+  c <- newEnv Oregon Discover
 #endif
   runBotTransT (AmazonCtx c e) action
 
