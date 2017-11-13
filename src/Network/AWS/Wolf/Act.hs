@@ -75,36 +75,35 @@ check = maybe (pure False) (liftIO . doesFileExist)
 act :: MonadConf c m => Text -> Bool -> Bool -> String -> m ()
 act queue nocopy local command =
   preConfCtx [ "label" .= LabelAct ] $
-    runAmazonCtx $
-      runAmazonWorkCtx queue $ do
-        traceInfo "poll" mempty
-        t0 <- liftIO getCurrentTime
-        (token, uid, input) <- pollActivity
-        t1 <- liftIO getCurrentTime
-        statsIncrement "wolf.act.poll.count" [ "queue" =. queue ]
-        statsHistogram "wolf.act.poll.elapsed" (realToFrac (diffUTCTime t1 t0) :: Double) [ "queue" =. queue ]
-        maybe_ token $ \token' ->
-          maybe_ uid $ \uid' ->
-            withCurrentWorkDirectory uid' nocopy local $ \wd ->
-              runAmazonStoreCtx uid' $ do
-                traceInfo "start" [ "dir" .= wd ]
-                t2  <- liftIO getCurrentTime
-                dd  <- dataDirectory wd
-                sd  <- storeDirectory wd
-                isd <- inputDirectory sd
-                osd <- outputDirectory sd
-                writeJson (dd </> "control.json") (Control uid')
-                writeText (dd </> "input.json") input
-                download isd
-                e <- run command
-                upload osd
-                output <- readText (dd </> "output.json")
-                maybe (completeActivity token' output) (const $ failActivity token') e
-                t3 <- liftIO getCurrentTime
-                traceInfo "finish" [ "dir" .= wd ]
-                let status = textFromString $ maybe "complete" (const "fail") e
-                statsIncrement "wolf.act.activity.count" [ "queue" =. queue, "status" =. status ]
-                statsHistogram "wolf.act.activity.elapsed" (realToFrac (diffUTCTime t3 t2) :: Double) [ "queue" =. queue ]
+    runAmazonWorkCtx queue $ do
+      traceInfo "poll" mempty
+      t0 <- liftIO getCurrentTime
+      (token, uid, input) <- pollActivity
+      t1 <- liftIO getCurrentTime
+      statsIncrement "wolf.act.poll.count" [ "queue" =. queue ]
+      statsHistogram "wolf.act.poll.elapsed" (realToFrac (diffUTCTime t1 t0) :: Double) [ "queue" =. queue ]
+      maybe_ token $ \token' ->
+        maybe_ uid $ \uid' ->
+          withCurrentWorkDirectory uid' nocopy local $ \wd ->
+            runAmazonStoreCtx uid' $ do
+              traceInfo "start" [ "dir" .= wd ]
+              t2  <- liftIO getCurrentTime
+              dd  <- dataDirectory wd
+              sd  <- storeDirectory wd
+              isd <- inputDirectory sd
+              osd <- outputDirectory sd
+              writeJson (dd </> "control.json") (Control uid')
+              writeText (dd </> "input.json") input
+              download isd
+              e <- run command
+              upload osd
+              output <- readText (dd </> "output.json")
+              maybe (completeActivity token' output) (const $ failActivity token') e
+              t3 <- liftIO getCurrentTime
+              traceInfo "finish" [ "dir" .= wd ]
+              let status = textFromString $ maybe "complete" (const "fail") e
+              statsIncrement "wolf.act.activity.count" [ "queue" =. queue, "status" =. status ]
+              statsHistogram "wolf.act.activity.elapsed" (realToFrac (diffUTCTime t3 t2) :: Double) [ "queue" =. queue ]
 
 
 -- | Run actor from main with config file.

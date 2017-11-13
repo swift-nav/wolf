@@ -41,28 +41,22 @@ type MonadConf c m =
 -- Amazon context.
 --
 data AmazonCtx = AmazonCtx
-  { _acConfCtx :: ConfCtx
+  { _acCtx :: Ctx
     -- ^ Parent context.
-  , _acEnv     :: Env
+  , _acEnv :: Env
     -- ^ Amazon environment.
   }
 
-$(makeClassyConstraints ''AmazonCtx [''HasConfCtx, ''HasEnv])
-
-instance HasConfCtx AmazonCtx where
-  confCtx = acConfCtx
-
-instance HasStatsCtx AmazonCtx where
-  statsCtx = confCtx . statsCtx
+$(makeClassyConstraints ''AmazonCtx [''HasCtx, ''HasEnv])
 
 instance HasCtx AmazonCtx where
-  ctx = statsCtx . ctx
+  ctx = acCtx
 
 instance HasEnv AmazonCtx where
   environment = acEnv
 
 type MonadAmazon c m =
-  ( MonadConf c m
+  ( MonadCtx c m
   , HasAmazonCtx c
   , AWSConstraint c m
   )
@@ -74,8 +68,6 @@ type MonadAmazon c m =
 data AmazonStoreCtx = AmazonStoreCtx
   { _ascConfCtx :: ConfCtx
     -- ^ Parent context.
-  , _ascUid     :: Text
-    -- ^ Workflow uid.
   , _ascPrefix  :: Text
     -- ^ Object prefix.
   }
@@ -83,7 +75,7 @@ data AmazonStoreCtx = AmazonStoreCtx
 $(makeClassyConstraints ''AmazonStoreCtx [''HasConfCtx])
 
 instance HasConfCtx AmazonStoreCtx where
-   confCtx = ascConfCtx
+  confCtx = ascConfCtx
 
 instance HasStatsCtx AmazonStoreCtx where
   statsCtx = confCtx . statsCtx

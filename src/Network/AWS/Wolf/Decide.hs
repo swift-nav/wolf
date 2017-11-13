@@ -88,26 +88,25 @@ schedule = do
 --
 decide :: MonadConf c m => Plan -> m ()
 decide p =
-  preConfCtx [ "label" .= LabelDecide ] $
-    runAmazonCtx $ do
-      let queue = p ^. pStart ^. tQueue
-      runAmazonWorkCtx queue $ do
-        traceInfo "poll" mempty
-        t0 <- liftIO getCurrentTime
-        (token, hes) <- pollDecision
-        t1 <- liftIO getCurrentTime
-        statsIncrement "wolf.decide.poll.count" [ "queue" =. queue ]
-        statsHistogram "wolf.decide.poll.elapsed" (realToFrac (diffUTCTime t1 t0) :: Double) [ "queue" =. queue ]
-        maybe_ token $ \token' ->
-          runAmazonDecisionCtx p hes $ do
-            traceInfo "start" mempty
-            t2 <- liftIO getCurrentTime
-            schedule >>=
-              completeDecision token'
-            t3 <- liftIO getCurrentTime
-            traceInfo "finish" mempty
-            statsIncrement "wolf.decide.decision.count" [ "queue" =. queue ]
-            statsHistogram "wolf.decide.decision.elapsed" (realToFrac (diffUTCTime t3 t2) :: Double) [ "queue" =. queue ]
+  preConfCtx [ "label" .= LabelDecide ] $ do
+    let queue = p ^. pStart ^. tQueue
+    runAmazonWorkCtx queue $ do
+      traceInfo "poll" mempty
+      t0 <- liftIO getCurrentTime
+      (token, hes) <- pollDecision
+      t1 <- liftIO getCurrentTime
+      statsIncrement "wolf.decide.poll.count" [ "queue" =. queue ]
+      statsHistogram "wolf.decide.poll.elapsed" (realToFrac (diffUTCTime t1 t0) :: Double) [ "queue" =. queue ]
+      maybe_ token $ \token' ->
+        runAmazonDecisionCtx p hes $ do
+          traceInfo "start" mempty
+          t2 <- liftIO getCurrentTime
+          schedule >>=
+            completeDecision token'
+          t3 <- liftIO getCurrentTime
+          traceInfo "finish" mempty
+          statsIncrement "wolf.decide.decision.count" [ "queue" =. queue ]
+          statsHistogram "wolf.decide.decision.elapsed" (realToFrac (diffUTCTime t3 t2) :: Double) [ "queue" =. queue ]
 
 -- | Run decider from main with config file.
 --

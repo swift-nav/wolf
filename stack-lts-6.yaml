@@ -2,5 +2,6 @@ resolver: lts-6.35
 packages:
 - .
 extra-deps:
-- preamble-0.0.51
-- shakers-0.0.35
+- preamble-0.0.52
+- shakers-0.0.36
+- foundation-0.0.10

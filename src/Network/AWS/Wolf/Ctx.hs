@@ -77,9 +77,9 @@ preConfCtx preamble action = do
 
 -- | Run amazon context.
 --
-runAmazonCtx :: MonadConf c m => TransT AmazonCtx m a -> m a
+runAmazonCtx :: MonadCtx c m => TransT AmazonCtx m a -> m a
 runAmazonCtx action = do
-  c <- view confCtx
+  c <- view ctx
 #if MIN_VERSION_amazonka(1,4,5)
   e <- newEnv Discover
 #else
@@ -94,7 +94,7 @@ runAmazonStoreCtx uid action = do
   let preamble = [ "uid" .= uid ]
   c <- view confCtx <&> cPreamble <>~ preamble
   p <- (-/- uid) . view cPrefix <$> view ccConf
-  runBotTransT (AmazonStoreCtx c uid p) action
+  runBotTransT (AmazonStoreCtx c p) action
 
 -- | Throttle throttle exceptions.
 --

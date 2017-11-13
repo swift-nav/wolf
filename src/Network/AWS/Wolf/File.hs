@@ -4,9 +4,7 @@
 -- | Files, directories, and encoding / decoding file functions.
 --
 module Network.AWS.Wolf.File
-  ( findRegularFiles
-  , touchDirectory
-  , dataDirectory
+  ( dataDirectory
   , storeDirectory
   , inputDirectory
   , outputDirectory
@@ -22,23 +20,9 @@ import qualified Data.ByteString          as BS
 import qualified Data.ByteString.Lazy     as LBS
 import           Data.Time
 import           Data.Yaml                hiding (encode)
-import           Network.AWS.Wolf.Prelude hiding (find)
+import           Network.AWS.Wolf.Prelude
 import           System.Directory
-import           System.FilePath
-import           System.FilePath.Find
 import           System.IO                hiding (readFile, writeFile)
-
--- | Recursively find all files under a directory.
---
-findRegularFiles :: MonadIO m => FilePath -> m [FilePath]
-findRegularFiles =
-  liftIO . find always (fileType ==? RegularFile)
-
--- | Create parent directory of file if missing.
---
-touchDirectory :: MonadIO m => FilePath -> m ()
-touchDirectory =
-  liftIO . createDirectoryIfMissing True . takeDirectory
 
 -- | Determine path to data directory and create it.
 --

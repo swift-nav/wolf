@@ -1,0 +1,25 @@
+- package:
+  - name: wolf
+  - section:
+    - name: library
+    - message:
+      - name: Weeds exported
+      - module:
+        - name: Network.AWS.Wolf.Types.Ctx
+        - identifier:
+          - HasAmazonCtx
+          - MonadAmazon
+          - acCtx
+          - acEnv
+          - adcConfCtx
+          - amazonCtx
+          - amazonDecisionCtx
+          - amazonStoreCtx
+          - amazonWorkCtx
+          - ascConfCtx
+          - awcConfCtx
+          - ccStatsCtx
+      - module:
+        - name: Network.AWS.Wolf.Types.Product
+        - identifier: cRunUid
+

@@ -41,10 +41,9 @@ countDecision t = do
 --
 count :: MonadConf c m => Plan -> m ()
 count p =
-  preConfCtx [ "label" .= LabelCount ] $
-    runAmazonCtx $ do
-      countDecision (p ^. pStart)
-      mapM_ countActivity (p ^. pTasks)
+  preConfCtx [ "label" .= LabelCount ] $ do
+    countDecision (p ^. pStart)
+    mapM_ countActivity (p ^. pTasks)
 
 -- | Run counter from main with config file.
 --

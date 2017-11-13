@@ -39,8 +39,6 @@ library
                      , bytestring
                      , conduit
                      , directory
-                     , exceptions
-                     , filemanip
                      , filepath
                      , http-types
                      , lifted-async

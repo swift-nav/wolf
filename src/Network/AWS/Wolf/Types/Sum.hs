@@ -13,8 +13,7 @@ import Network.AWS.Wolf.Prelude
 -- Tags for referencing workers.
 --
 data LabelType
-  = LabelWolf
-  | LabelAct
+  = LabelAct
   | LabelDecide
   | LabelCount
   deriving (Show, Eq)
