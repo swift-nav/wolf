@@ -9,6 +9,17 @@
         - identifier:
           - HasAmazonCtx
           - MonadAmazon
+          - _acCtx
+          - _acEnv
+          - _adcConfCtx
+          - _adcEvents
+          - _adcPlan
+          - _ascConfCtx
+          - _ascPrefix
+          - _awcConfCtx
+          - _awcQueue
+          - _ccConf
+          - _ccStatsCtx
           - acCtx
           - acEnv
           - adcConfCtx
@@ -21,5 +32,15 @@
           - ccStatsCtx
       - module:
         - name: Network.AWS.Wolf.Types.Product
-        - identifier: cRunUid
+        - identifier:
+          - _cBucket
+          - _cDomain
+          - _cPrefix
+          - _cRunUid
+          - _pStart
+          - _pTasks
+          - _tName
+          - _tQueue
+          - _tVersion
+          - cRunUid
 
