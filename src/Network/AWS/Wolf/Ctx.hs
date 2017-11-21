@@ -43,7 +43,7 @@ botErrorCatch ex = do
 --
 topSomeExceptionCatch :: MonadStatsCtx c m => SomeException -> m a
 topSomeExceptionCatch ex = do
-  statsIncrement "exception" [ "reason" =. textFromString (displayException ex) ]
+  statsIncrement "wolf.exception" [ "reason" =. textFromString (displayException ex) ]
   throwIO ex
 
 -- | Run bottom TransT.
