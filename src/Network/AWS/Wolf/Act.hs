@@ -28,20 +28,19 @@ download dir = do
   traceInfo "download" [ "dir" .= dir ]
   ks <- listArtifacts
   forM_ ks $ \k -> do
-    traceInfo "download" [ "key" .= k ]
-    let f = dir </> textToString k
-    touchDirectory f
-    getArtifact f k
+    traceInfo "download" [ "dir" .= dir, "key" .= k ]
+    touchDirectory (dir </> k)
+    getArtifact (dir </> k) k
 
 -- | Upload artifacts from the store output directory.
 --
 upload :: MonadAmazonStore c m => FilePath -> m ()
 upload dir = do
   traceInfo "upload" [ "dir" .= dir ]
-  fs <- findRelativeFiles dir
-  forM_ fs $ \f -> do
-    traceInfo "upload" [ "file" .= f ]
-    putArtifact (dir </> f) (textFromString f)
+  ks <- findRelativeFiles dir
+  forM_ ks $ \k -> do
+    traceInfo "upload" [ "dir" .= dir, "key" .= k ]
+    putArtifact (dir </> k) k
 
 -- | callCommand wrapper that maybe returns an exception.
 --

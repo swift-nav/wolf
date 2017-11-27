@@ -18,36 +18,37 @@ import Network.AWS.S3           hiding (cBucket)
 import Network.AWS.Wolf.Ctx
 import Network.AWS.Wolf.Prelude hiding (concatMap)
 import Network.AWS.Wolf.Types
+import System.FilePath
 
 -- | List keys in bucket with prefix.
 --
-listArtifacts :: MonadAmazonStore c m => m [Text]
+listArtifacts :: MonadAmazonStore c m => m [FilePath]
 listArtifacts = do
   b <- view cBucket <$> view ccConf
   p <- view ascPrefix
   runResourceT $ runAmazonCtx $
     paginate (set loPrefix (pure p) $ listObjects (BucketName b))
-      =$= concatMap (((toText . view oKey) <$>) . view lorsContents)
+      =$= concatMap ((makeRelative (textToString p) . textToString . toText . view oKey <$>) . view lorsContents)
       $$  sinkList
 
 -- | Get object in bucket with key.
 --
-getArtifact :: MonadAmazonStore c m => FilePath -> Text -> m ()
+getArtifact :: MonadAmazonStore c m => FilePath -> FilePath -> m ()
 getArtifact file key = do
   b <- view cBucket <$> view ccConf
   p <- view ascPrefix
   runResourceT $ runAmazonCtx $ do
-    gors <- send $ getObject (BucketName b) (ObjectKey (p -/- key))
+    gors <- send $ getObject (BucketName b) (ObjectKey (p -/- textFromString key))
     sinkBody (gors ^. gorsBody) (sinkFileBS file)
 
 -- | Put object in bucket with key.
 --
-putArtifact :: MonadAmazonStore c m => FilePath -> Text -> m ()
+putArtifact :: MonadAmazonStore c m => FilePath -> FilePath -> m ()
 putArtifact file key = do
   b <- view cBucket <$> view ccConf
   p <- view ascPrefix
   runResourceT $ runAmazonCtx $ do
     (sha, len) <- sourceFileBS file $$ getZipSink $ (,) <$> ZipSink sinkSHA256 <*> ZipSink lengthE
-    void $ send $ putObject (BucketName b) (ObjectKey (p -/- key)) $
+    void $ send $ putObject (BucketName b) (ObjectKey (p -/- textFromString key)) $
       Hashed $ HashedStream sha len $ sourceFileBS file
 
