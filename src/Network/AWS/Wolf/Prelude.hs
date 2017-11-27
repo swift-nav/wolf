@@ -10,7 +10,7 @@ module Network.AWS.Wolf.Prelude
   ) where
 
 import Control.Concurrent.Async.Lifted
-import Preamble                        as Exports
+import Preamble                        as Exports hiding (stripPrefix)
 
 -- | Run a list of actions concurrently.
 --
