@@ -18,7 +18,7 @@ module Network.AWS.Wolf.SWF
 
 import Control.Monad.Trans.AWS
 import Data.Conduit
-import Data.Conduit.List        hiding (concatMap, map)
+import Data.Conduit.List        hiding (concatMap)
 import Network.AWS.SWF
 import Network.AWS.Wolf.Ctx
 import Network.AWS.Wolf.Prelude
@@ -47,7 +47,7 @@ pollDecision = do
   runResourceT $ runAmazonCtx $ do
     pfdtrs <- paginate (pollForDecisionTask d tl) $$ consume
     pure
-      ( join $ headMay $ map (view pfdtrsTaskToken) pfdtrs
+      ( join $ headMay $ view pfdtrsTaskToken <$> pfdtrs
       , reverse $ concatMap (view pfdtrsEvents) pfdtrs
       )
 
