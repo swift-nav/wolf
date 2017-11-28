@@ -81,6 +81,24 @@ executable wolf-counter
                      , optparse-generic
   default-language:    Haskell2010
 
+executable wolf-upload
+  hs-source-dirs:      main
+  main-is:             upload.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall
+  build-depends:       base
+                     , wolf
+                     , optparse-generic
+  default-language:    Haskell2010
+
+executable wolf-download
+  hs-source-dirs:      main
+  main-is:             download.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall
+  build-depends:       base
+                     , wolf
+                     , optparse-generic
+  default-language:    Haskell2010
+
 executable shake-wolf
   main-is:             Shakefile.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall
