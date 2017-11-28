@@ -2,7 +2,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
--- | Run counter.
+-- | Run upload.
 --
 import Network.AWS.Wolf
 import Options.Generic
@@ -14,8 +14,10 @@ import Options.Generic
 data Args = Args
   { config :: FilePath
     -- ^ Configuration file.
-  , plan   :: FilePath
-    -- ^ Plan file to count on.
+  , dir    :: FilePath
+    -- ^ Directory to upload.
+  , uid    :: Text
+    -- ^ Workflow ID to upload.
   } deriving (Show, Generic)
 
 instance ParseRecord Args
@@ -24,7 +26,8 @@ instance ParseRecord Args
 --
 main :: IO ()
 main = do
-  args <- getRecord "Counter"
-  countMain
+  args <- getRecord "Upload"
+  upMain
     (config args)
-    (plan args)
+    (dir args)
+    (uid args)

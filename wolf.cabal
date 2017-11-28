@@ -22,6 +22,7 @@ library
                      , Network.AWS.Wolf.Count
                      , Network.AWS.Wolf.Ctx
                      , Network.AWS.Wolf.Decide
+                     , Network.AWS.Wolf.Down
                      , Network.AWS.Wolf.File
                      , Network.AWS.Wolf.Prelude
                      , Network.AWS.Wolf.S3
@@ -30,6 +31,7 @@ library
                      , Network.AWS.Wolf.Types.Ctx
                      , Network.AWS.Wolf.Types.Product
                      , Network.AWS.Wolf.Types.Sum
+                     , Network.AWS.Wolf.Up
   default-language:    Haskell2010
   hs-source-dirs:      src
   ghc-options:         -Wall
