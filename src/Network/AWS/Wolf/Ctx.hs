@@ -4,7 +4,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Network.AWS.Wolf.Ctx
-  ( runConfCtx
+  ( runTop
+  , runConfCtx
   , preConfCtx
   , runAmazonCtx
   , runAmazonStoreCtx
@@ -43,18 +44,19 @@ botErrorCatch ex = do
 --
 topSomeExceptionCatch :: MonadStatsCtx c m => SomeException -> m a
 topSomeExceptionCatch ex = do
+  traceError "exception" [ "error" .= displayException ex ]
   statsIncrement "wolf.exception" [ "reason" =. textFromString (displayException ex) ]
   throwIO ex
 
+-- | Run stats ctx.
+--
+runTop :: MonadCtx c m => TransT StatsCtx m a -> m a
+runTop action = runStatsCtx $ catch action topSomeExceptionCatch
+
 -- | Run bottom TransT.
 --
-runBotTransT :: (MonadControl m, HasCtx c) => c -> TransT c m a -> m a
-runBotTransT c action = runTransT c $ catches action [ Handler botErrorCatch, Handler botSomeExceptionCatch ]
-
--- | Run top TransT.
---
-runTopTransT :: (MonadControl m, HasStatsCtx c) => c -> TransT c m a -> m a
-runTopTransT c action = runBotTransT c $ catch action topSomeExceptionCatch
+runTrans :: (MonadControl m, HasCtx c) => c -> TransT c m a -> m a
+runTrans c action = runTransT c $ catches action [ Handler botErrorCatch, Handler botSomeExceptionCatch ]
 
 -- | Run configuration context.
 --
@@ -66,14 +68,14 @@ runConfCtx conf action = do
         , "prefix" .= (conf ^. cPrefix)
         ]
   c <- view statsCtx <&> cPreamble <>~ preamble
-  runTopTransT (ConfCtx c conf) action
+  runTrans (ConfCtx c conf) action
 
 -- | Update configuration context's preamble.
 --
 preConfCtx :: MonadConf c m => Pairs -> TransT ConfCtx m a -> m a
 preConfCtx preamble action = do
   c <- view confCtx <&> cPreamble <>~ preamble
-  runBotTransT c action
+  runTrans c action
 
 -- | Run amazon context.
 --
@@ -85,7 +87,7 @@ runAmazonCtx action = do
 #else
   e <- newEnv Oregon Discover
 #endif
-  runBotTransT (AmazonCtx c e) action
+  runTrans (AmazonCtx c e) action
 
 -- | Run amazon store context.
 --
@@ -94,7 +96,7 @@ runAmazonStoreCtx uid action = do
   let preamble = [ "uid" .= uid ]
   c <- view confCtx <&> cPreamble <>~ preamble
   p <- (-/- uid) . view cPrefix <$> view ccConf
-  runBotTransT (AmazonStoreCtx c p) action
+  runTrans (AmazonStoreCtx c p) action
 
 -- | Throttle throttle exceptions.
 --
@@ -123,7 +125,7 @@ runAmazonWorkCtx :: MonadConf c m => Text -> TransT AmazonWorkCtx m a -> m a
 runAmazonWorkCtx queue action = do
   let preamble = [ "queue" .= queue ]
   c <- view confCtx <&> cPreamble <>~ preamble
-  runBotTransT (AmazonWorkCtx c queue) (catch action $ throttler action)
+  runTrans (AmazonWorkCtx c queue) (catch action $ throttler action)
 
 -- | Run amazon decision context.
 --
@@ -131,4 +133,4 @@ runAmazonDecisionCtx :: MonadConf c m => Plan -> [HistoryEvent] -> TransT Amazon
 runAmazonDecisionCtx p hes action = do
   let preamble = [ "name" .= (p ^. pStart ^. tName) ]
   c <- view confCtx <&> cPreamble <>~ preamble
-  runBotTransT (AmazonDecisionCtx c p hes) action
+  runTrans (AmazonDecisionCtx c p hes) action

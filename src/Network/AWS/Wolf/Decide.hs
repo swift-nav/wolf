@@ -112,10 +112,9 @@ decide p =
 --
 decideMain :: MonadControl m => FilePath -> FilePath -> m ()
 decideMain cf pf =
-  runCtx $
-    runStatsCtx $ do
-      conf <- readYaml cf
-      runConfCtx conf $ do
-        plans <- readYaml pf
-        runConcurrent $
-          forever . decide <$> plans
+  runCtx $ runTop $ do
+    conf <- readYaml cf
+    runConfCtx conf $ do
+      plans <- readYaml pf
+      runConcurrent $
+        forever . decide <$> plans

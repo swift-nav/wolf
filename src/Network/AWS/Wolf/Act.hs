@@ -110,12 +110,11 @@ act queue nocopy local command =
 --
 actMain :: MonadControl m => FilePath -> Maybe FilePath -> Text -> Int -> Bool -> Bool -> String -> m ()
 actMain cf quiesce queue num nocopy local command =
-  runCtx $
-    runStatsCtx $ do
-      conf <- readYaml cf
-      runConfCtx conf $
-        runConcurrent $ replicate num $ forever $ do
-          ok <- check quiesce
-          when ok $
-            liftIO exitSuccess
-          act queue nocopy local command
+  runCtx $ runTop $ do
+    conf <- readYaml cf
+    runConfCtx conf $
+      runConcurrent $ replicate num $ forever $ do
+        ok <- check quiesce
+        when ok $
+          liftIO exitSuccess
+        act queue nocopy local command

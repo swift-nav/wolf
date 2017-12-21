@@ -49,9 +49,8 @@ count p =
 --
 countMain :: MonadControl m => FilePath -> FilePath -> m ()
 countMain cf pf =
-  runCtx $
-    runStatsCtx $ do
-      conf <- readYaml cf
-      runConfCtx conf $ do
-        plans <- readYaml pf
-        mapM_ count (plans :: [Plan])
+  runCtx $ runTop $ do
+    conf <- readYaml cf
+    runConfCtx conf $ do
+      plans <- readYaml pf
+      mapM_ count (plans :: [Plan])
