@@ -16,6 +16,10 @@ data Args = Args
     -- ^ Configuration file.
   , quiesce :: Maybe FilePath
     -- ^ Optional quiesce file to stop actor.
+  , domain  :: Maybe Text
+    -- ^ Optional domain to use.
+  , bucket  :: Maybe Text
+    -- ^ Optional bucket to use.
   , queue   :: Text
     -- ^ Queue to listen to act on.
   , num     :: Maybe Int
@@ -38,6 +42,8 @@ main = do
   actMain
     (config args)
     (quiesce args)
+    (domain args)
+    (bucket args)
     (queue args)
     (fromMaybe 1 $ num args)
     (nocopy args)

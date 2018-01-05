@@ -110,11 +110,12 @@ decide p =
 
 -- | Run decider from main with config file.
 --
-decideMain :: MonadControl m => FilePath -> FilePath -> m ()
-decideMain cf pf =
+decideMain :: MonadControl m => FilePath -> FilePath -> Maybe Text -> m ()
+decideMain cf pf domain  =
   runCtx $ runTop $ do
     conf <- readYaml cf
-    runConfCtx conf $ do
+    let conf' = maybe conf (flip (set cDomain) conf) domain
+    runConfCtx conf' $ do
       plans <- readYaml pf
       runConcurrent $
         forever . decide <$> plans

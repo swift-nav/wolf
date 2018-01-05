@@ -108,11 +108,13 @@ act queue nocopy local command =
 
 -- | Run actor from main with config file.
 --
-actMain :: MonadControl m => FilePath -> Maybe FilePath -> Text -> Int -> Bool -> Bool -> String -> m ()
-actMain cf quiesce queue num nocopy local command =
+actMain :: MonadControl m => FilePath -> Maybe FilePath -> Maybe Text -> Maybe Text -> Text -> Int -> Bool -> Bool -> String -> m ()
+actMain cf quiesce domain bucket queue num nocopy local command =
   runCtx $ runTop $ do
     conf <- readYaml cf
-    runConfCtx conf $
+    let conf'  = maybe conf (flip (set cDomain) conf) domain
+        conf'' = maybe conf' (flip (set cBucket) conf') bucket
+    runConfCtx conf'' $
       runConcurrent $ replicate num $ forever $ do
         ok <- check quiesce
         when ok $

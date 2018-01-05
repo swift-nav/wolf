@@ -47,10 +47,11 @@ count p =
 
 -- | Run counter from main with config file.
 --
-countMain :: MonadControl m => FilePath -> FilePath -> m ()
-countMain cf pf =
+countMain :: MonadControl m => FilePath -> FilePath -> Maybe Text -> m ()
+countMain cf pf domain =
   runCtx $ runTop $ do
     conf <- readYaml cf
-    runConfCtx conf $ do
+    let conf' = maybe conf (flip (set cDomain) conf) domain
+    runConfCtx conf' $ do
       plans <- readYaml pf
       mapM_ count (plans :: [Plan])
