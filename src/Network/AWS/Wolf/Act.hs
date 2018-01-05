@@ -105,16 +105,14 @@ act queue nocopy local command =
               statsIncrement "wolf.act.activity.count" [ "queue" =. queue, "status" =. status ]
               statsHistogram "wolf.act.activity.elapsed" (realToFrac (diffUTCTime t3 t2) :: Double) [ "queue" =. queue ]
 
-
 -- | Run actor from main with config file.
 --
 actMain :: MonadControl m => FilePath -> Maybe FilePath -> Maybe Text -> Maybe Text -> Text -> Int -> Bool -> Bool -> String -> m ()
 actMain cf quiesce domain bucket queue num nocopy local command =
   runCtx $ runTop $ do
     conf <- readYaml cf
-    let conf'  = maybe conf (flip (set cDomain) conf) domain
-        conf'' = maybe conf' (flip (set cBucket) conf') bucket
-    runConfCtx conf'' $
+    let conf' = override cBucket bucket $ override cDomain domain conf
+    runConfCtx conf' $
       runConcurrent $ replicate num $ forever $ do
         ok <- check quiesce
         when ok $

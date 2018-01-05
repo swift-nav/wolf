@@ -51,7 +51,7 @@ countMain :: MonadControl m => FilePath -> FilePath -> Maybe Text -> m ()
 countMain cf pf domain =
   runCtx $ runTop $ do
     conf <- readYaml cf
-    let conf' = maybe conf (flip (set cDomain) conf) domain
+    let conf' = override cDomain domain conf
     runConfCtx conf' $ do
       plans <- readYaml pf
       mapM_ count (plans :: [Plan])
