@@ -20,6 +20,8 @@ data Args = Args
     -- ^ Optional domain to use.
   , bucket  :: Maybe Text
     -- ^ Optional bucket to use.
+  , prefix  :: Maybe Text
+    -- ^ Optional prefix to use.
   , queue   :: Text
     -- ^ Queue to listen to act on.
   , num     :: Maybe Int
@@ -44,6 +46,7 @@ main = do
     (quiesce args)
     (domain args)
     (bucket args)
+    (prefix args)
     (queue args)
     (fromMaybe 1 $ num args)
     (nocopy args)
