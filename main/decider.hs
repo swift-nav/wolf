@@ -16,6 +16,8 @@ data Args = Args
     -- ^ Configuration file.
   , plan   :: FilePath
     -- ^ Plan file to decide on.
+  , domain :: Maybe Text
+    -- ^ Optional domain to use.
   } deriving (Show, Generic)
 
 instance ParseRecord Args
@@ -28,3 +30,4 @@ main = do
   decideMain
     (config args)
     (plan args)
+    (domain args)
