@@ -30,7 +30,7 @@ data Args = Args
     -- ^ Copy working directory.
   , local   :: Bool
     -- ^ Run locally, not in a temp directory.
-  , includes :: [FilePath]
+  , include :: [FilePath]
     -- ^ Optional artifacts to filter.
   , command :: String
     -- ^ Command to run.
@@ -53,5 +53,5 @@ main = do
     (fromMaybe 1 $ num args)
     (nocopy args)
     (local args)
-    (includes args)
+    (include args)
     (command args)
