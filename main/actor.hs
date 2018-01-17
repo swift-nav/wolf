@@ -30,6 +30,8 @@ data Args = Args
     -- ^ Copy working directory.
   , local   :: Bool
     -- ^ Run locally, not in a temp directory.
+  , includes :: [FilePath]
+    -- ^ Optional artifacts to filter.
   , command :: String
     -- ^ Command to run.
   } deriving (Show, Generic)
@@ -51,4 +53,5 @@ main = do
     (fromMaybe 1 $ num args)
     (nocopy args)
     (local args)
+    (includes args)
     (command args)
