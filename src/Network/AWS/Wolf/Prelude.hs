@@ -8,6 +8,7 @@ module Network.AWS.Wolf.Prelude
   ( module Exports
   , runConcurrent
   , override
+  , interleave
   ) where
 
 import Control.Concurrent.Async.Lifted
@@ -22,3 +23,8 @@ runConcurrent = void . runConcurrently . traverse Concurrently
 --
 override :: ASetter s s a b -> Maybe b -> s -> s
 override k v c = maybe c (flip (set k) c) v
+
+-- | Interleave arrays.
+--
+interleave :: [a] -> [a] -> [a]
+interleave xs ys = concat $ zipWith (\x y -> [x, y]) xs ys

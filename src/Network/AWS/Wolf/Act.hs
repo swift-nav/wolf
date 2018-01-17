@@ -22,8 +22,8 @@ import System.Process
 
 -- | S3 copy call.
 --
-cp :: MonadIO m => FilePath -> FilePath -> m ()
-cp f t = liftIO $ callProcess "aws" [ "s3", "cp", "--quiet", "--recursive", f, t ]
+cp :: MonadIO m => [FilePath] -> m ()
+cp = liftIO . callProcess "aws" . (["s3", "cp", "--quiet", "--recursive"] <>)
 
 -- | Key to download and upload objects from.
 --
@@ -35,17 +35,20 @@ key = do
 
 -- | Download artifacts to the store input directory.
 --
-download :: MonadAmazonStore c m => FilePath -> m ()
-download dir = do
-  traceInfo "download" [ "dir" .= dir ]
-  flip cp dir =<< key
+download :: MonadAmazonStore c m => FilePath -> [FilePath] -> m ()
+download dir includes = do
+  traceInfo "download" [ "dir" .= dir, "includes" .= includes ]
+  let includes' = bool ([ "--exclude", "*" ] <> interleave (repeat "--include") includes) mempty $ null includes
+  k <- key
+  cp $ includes' <> [ k, dir ]
 
 -- | Upload artifacts from the store output directory.
 --
 upload :: MonadAmazonStore c m => FilePath -> m ()
 upload dir = do
   traceInfo "upload" [ "dir" .= dir ]
-  cp dir =<< key
+  k <- key
+  cp [ dir, k ]
 
 -- | callCommand wrapper that maybe returns an exception.
 --
@@ -72,8 +75,8 @@ check = maybe (pure False) (liftIO . doesFileExist)
 
 -- | Actor logic - poll for work, download artifacts, run command, upload artifacts.
 --
-act :: MonadConf c m => Text -> Bool -> Bool -> String -> m ()
-act queue nocopy local command =
+act :: MonadConf c m => Text -> Bool -> Bool -> [FilePath] -> String -> m ()
+act queue nocopy local includes command =
   preConfCtx [ "label" .= LabelAct ] $
     runAmazonWorkCtx queue $ do
       traceInfo "poll" mempty
@@ -94,7 +97,7 @@ act queue nocopy local command =
               osd <- outputDirectory sd
               writeJson (dd </> "control.json") (Control uid')
               writeText (dd </> "input.json") input
-              download isd
+              download isd includes
               e <- run command
               upload osd
               output <- readText (dd </> "output.json")
@@ -107,8 +110,8 @@ act queue nocopy local command =
 
 -- | Run actor from main with config file.
 --
-actMain :: MonadControl m => FilePath -> Maybe FilePath -> Maybe Text -> Maybe Text -> Maybe Text -> Text -> Int -> Bool -> Bool -> String -> m ()
-actMain cf quiesce domain bucket prefix queue num nocopy local command =
+actMain :: MonadControl m => FilePath -> Maybe FilePath -> Maybe Text -> Maybe Text -> Maybe Text -> Text -> Int -> Bool -> Bool -> [FilePath] -> String -> m ()
+actMain cf quiesce domain bucket prefix queue num nocopy local includes command =
   runCtx $ runTop $ do
     conf <- readYaml cf
     let conf' = override cPrefix prefix $ override cBucket bucket $ override cDomain domain conf
@@ -117,4 +120,4 @@ actMain cf quiesce domain bucket prefix queue num nocopy local command =
         ok <- check quiesce
         when ok $
           liftIO exitSuccess
-        act queue nocopy local command
+        act queue nocopy local includes command
