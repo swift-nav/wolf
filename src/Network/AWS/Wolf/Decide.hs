@@ -29,11 +29,11 @@ end input = do
 
 -- | Next activity in workflow to run.
 --
-next :: MonadAmazonDecision c m => Maybe Text -> Task -> m Decision
-next input t = do
+next :: MonadAmazonDecision c m => Maybe Text -> Maybe Text -> Task -> m Decision
+next input priority t = do
   uid <- liftIO $ toText <$> nextRandom
   traceInfo "next" [ "uid" .= uid, "task" .= t ]
-  pure $ scheduleWork uid (t ^. tName) (t ^. tVersion) (t ^. tQueue) input
+  pure $ scheduleWork uid (t ^. tName) (t ^. tVersion) (t ^. tQueue) input priority
 
 -- | Failed activity, stop the workflow.
 --
@@ -48,13 +48,13 @@ completed :: MonadAmazonDecision c m => HistoryEvent -> m Decision
 completed he = do
   traceInfo "completed" mempty
   hes <- view adcEvents
-  (input, name) <- maybeThrowIO' "No Completed Information" $ do
+  (input, priority, name) <- maybeThrowIO' "No Completed Information" $ do
     atcea <- he ^. heActivityTaskCompletedEventAttributes
     he'   <- flip find hes $ (== atcea ^. atceaScheduledEventId) . view heEventId
-    name  <- view atName . view atseaActivityType <$> he' ^. heActivityTaskScheduledEventAttributes
-    pure (atcea ^. atceaResult, name)
+    atsea <- he' ^. heActivityTaskScheduledEventAttributes
+    pure (atcea ^. atceaResult, atsea ^. atseaTaskPriority, atsea ^. atseaActivityType ^. atName)
   p <- view adcPlan
-  maybe (end input) (next input) $
+  maybe (end input) (next input priority) $
     join $ fmap headMay $ tailMay $ flip dropWhile (p ^. pTasks) $ (/= name) . view tName
 
 -- | Beginning of workflow, start the first activity.
@@ -62,10 +62,11 @@ completed he = do
 begin :: MonadAmazonDecision c m => HistoryEvent -> m Decision
 begin he = do
   traceInfo "begin" mempty
-  input <- maybeThrowIO' "No Start Information" $
-    view weseaInput <$> he ^. heWorkflowExecutionStartedEventAttributes
+  (input, priority) <- maybeThrowIO' "No Start Information" $ do
+    wesea <- he ^. heWorkflowExecutionStartedEventAttributes
+    pure (wesea ^. weseaInput, wesea ^. weseaTaskPriority)
   p <- view adcPlan
-  maybe (end input) (next input) $ headMay (p ^. pTasks)
+  maybe (end input) (next input priority) $ headMay (p ^. pTasks)
 
 -- | Schedule workflow based on historical events.
 --

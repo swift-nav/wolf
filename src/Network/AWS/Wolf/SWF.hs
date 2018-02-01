@@ -94,15 +94,16 @@ completeDecision token d =
 
 -- | Schedule decision.
 --
-scheduleWork :: Text -> Text -> Text -> Text -> Maybe Text -> Decision
-scheduleWork uid name version queue input =
+scheduleWork :: Text -> Text -> Text -> Text -> Maybe Text -> Maybe Text -> Decision
+scheduleWork uid name version queue input priority =
   decision ScheduleActivityTask &
     dScheduleActivityTaskDecisionAttributes .~ pure satda
   where
     satda =
       scheduleActivityTaskDecisionAttributes (activityType name version) uid &
         satdaTaskList .~ pure (taskList queue) &
-        satdaInput .~ input
+        satdaInput .~ input &
+        satdaTaskPriority .~ priority
 
 -- | Complete decision.
 --
