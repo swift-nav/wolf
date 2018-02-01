@@ -1,0 +1,15 @@
+---
+-
+  start:
+    name: HelloWorld
+    version: '1.0'
+    queue: hello-world-queue
+  tasks:
+    -
+      name: Hello
+      version: '1.0'
+      queue: hello-queue
+    -
+      name: World
+      version: '1.0'
+      queue: world-queue
