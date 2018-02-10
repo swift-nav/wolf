@@ -52,7 +52,7 @@ completed he = do
     atcea <- he ^. heActivityTaskCompletedEventAttributes
     he'   <- flip find hes $ (== atcea ^. atceaScheduledEventId) . view heEventId
     atsea <- he' ^. heActivityTaskScheduledEventAttributes
-    pure (atcea ^. atceaResult, atsea ^. atseaTaskPriority, atsea ^. atseaActivityType ^. atName)
+    pure (atcea ^. atceaResult, atsea ^. atseaTaskPriority, atsea ^. atseaActivityType . atName)
   p <- view adcPlan
   maybe (end input) (next input priority) $
     join $ fmap headMay $ tailMay $ flip dropWhile (p ^. pTasks) $ (/= name) . view tName
@@ -90,7 +90,7 @@ schedule = do
 decide :: MonadConf c m => Plan -> m ()
 decide p =
   preConfCtx [ "label" .= LabelDecide ] $ do
-    let queue = p ^. pStart ^. tQueue
+    let queue = p ^. pStart . tQueue
     runAmazonWorkCtx queue $ do
       traceInfo "poll" mempty
       t0 <- liftIO getCurrentTime

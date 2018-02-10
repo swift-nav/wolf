@@ -131,6 +131,6 @@ runAmazonWorkCtx queue action = do
 --
 runAmazonDecisionCtx :: MonadConf c m => Plan -> [HistoryEvent] -> TransT AmazonDecisionCtx m a -> m a
 runAmazonDecisionCtx p hes action = do
-  let preamble = [ "name" .= (p ^. pStart ^. tName) ]
+  let preamble = [ "name" .= (p ^. pStart . tName) ]
   c <- view confCtx <&> cPreamble <>~ preamble
   runTrans (AmazonDecisionCtx c p hes) action
