@@ -1,5 +1,5 @@
 name:                  wolf
-version:               0.3.41
+version:               0.3.42
 synopsis:              Amazon Simple Workflow Service Wrapper.
 description:           Wolf is a wrapper around Amazon Simple Workflow Service.
 homepage:              https://github.com/swift-nav/wolf
