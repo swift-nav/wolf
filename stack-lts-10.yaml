@@ -2,5 +2,5 @@ resolver: lts-10.5
 packages:
 - .
 extra-deps:
-- preamble-0.0.58
-- shakers-0.0.40
+- preamble-0.0.59
+- shakers-0.0.41

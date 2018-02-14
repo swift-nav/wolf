@@ -2,6 +2,6 @@ resolver: nightly-2018-02-09
 packages:
 - .
 extra-deps:
-- preamble-0.0.58
-- shakers-0.0.40
+- preamble-0.0.59
+- shakers-0.0.41
 
