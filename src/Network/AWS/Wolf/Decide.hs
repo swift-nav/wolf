@@ -55,7 +55,7 @@ completed he = do
     pure (atcea ^. atceaResult, atsea ^. atseaTaskPriority, atsea ^. atseaActivityType . atName)
   p <- view adcPlan
   maybe (end input) (next input priority) $
-    join $ fmap headMay $ tailMay $ flip dropWhile (p ^. pTasks) $ (/= name) . view tName
+    tailMay (flip dropWhile (p ^. pTasks) $ (/= name) . view tName) >>= headMay
 
 -- | Beginning of workflow, start the first activity.
 --
