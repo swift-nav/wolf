@@ -18,6 +18,8 @@ matrix:
     - env: STACK_YAML=stack-lts-10.yaml
     - env: STACK_YAML=stack-lts-11.yaml
     - env: STACK_YAML=stack-nightly.yaml
+  allow_failures:
+    - env: STACK_YAML=stack-lts-11.yaml
 
 before_install:
   - mkdir -p $HOME/.local/bin
