@@ -37,10 +37,8 @@ main = shakeMain $ do
 
   -- | sanity
   --
-  fake "." pats "sanity" $ const $ do
-    need [ "build-error" ]
-    need [ "docs" ]
-    need [ "lint", "weed" ]
+  fake "." pats "sanity" $ const $
+    need [ "build-error", "lint" ]
 
   -- | Default things to run.
   --
