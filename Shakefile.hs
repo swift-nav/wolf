@@ -19,8 +19,9 @@ dockerRules' = do
         [ "Dockerfile"
         , "Shakefile.hs"
         , "stack.yaml"
-        , "shakers.cabal"
+        , "wolf.cabal"
         , "src//*.hs"
+        , "main//*.hs"
         , "Setup.hs"
         , "LICENSE"
         ]
