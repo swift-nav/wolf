@@ -95,12 +95,15 @@ act queue nocopy local includes command =
               sd  <- storeDirectory wd
               isd <- inputDirectory sd
               osd <- outputDirectory sd
+              msd <- metaDirectory sd
               writeJson (dd </> "control.json") (Control uid')
               writeText (dd </> "input.json") input
+              writeText (msd </> (textToString queue <> "_input.json")) input
               download isd includes
               e <- run command
               upload osd
               output <- readText (dd </> "output.json")
+              writeText (msd </> (textToString queue <> "_output.json")) output
               maybe (completeActivity token' output) (const $ failActivity token') e
               t3 <- liftIO getCurrentTime
               traceInfo "finish" [ "dir" .= wd ]
