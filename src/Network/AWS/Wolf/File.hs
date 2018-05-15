@@ -8,6 +8,7 @@ module Network.AWS.Wolf.File
   , storeDirectory
   , inputDirectory
   , outputDirectory
+  , metaDirectory
   , writeText
   , readText
   , writeJson
@@ -53,6 +54,15 @@ inputDirectory dir = do
 outputDirectory :: MonadIO m => FilePath -> m FilePath
 outputDirectory dir = do
   let dir' = dir </> "output"
+  liftIO $ createDirectoryIfMissing True dir'
+  pure dir'
+
+-- | Determine path to store input/output json files and create it.
+--
+metaDirectory :: MonadIO m => FilePath -> m FilePath
+metaDirectory dir = do
+  osd <- outputDirectory dir
+  let dir' = osd </> "meta"
   liftIO $ createDirectoryIfMissing True dir'
   pure dir'
 
