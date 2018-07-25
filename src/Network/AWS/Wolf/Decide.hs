@@ -87,7 +87,7 @@ schedule = do
 
 -- | Decider logic - poll for decisions, make decisions.
 --
-decide :: MonadConf c m => Plan -> m ()
+decide :: (MonadBaseControl IO m, MonadResource m, MonadConf c m) => Plan -> m ()
 decide p =
   preConfCtx [ "label" .= LabelDecide ] $ do
     let queue = p ^. pStart . tQueue
@@ -111,7 +111,7 @@ decide p =
 
 -- | Run decider from main with config file.
 --
-decideMain :: MonadControl m => FilePath -> FilePath -> Maybe Text -> m ()
+--decideMain :: MonadControl m => FilePath -> FilePath -> Maybe Text -> m ()
 decideMain cf pf domain  =
   runCtx $ runTop $ do
     conf <- readYaml cf
@@ -119,4 +119,4 @@ decideMain cf pf domain  =
     runConfCtx conf' $ do
       plans <- readYaml pf
       runConcurrent $
-        forever . decide <$> plans
+        forever . runResourceT . decide <$> plans

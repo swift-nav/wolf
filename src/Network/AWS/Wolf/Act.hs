@@ -52,7 +52,7 @@ upload dir = do
 
 -- | callCommand wrapper that maybe returns an exception.
 --
-callCommand' :: MonadControl m => String -> m (Maybe SomeException)
+--callCommand' :: MonadControl m => String -> m (Maybe SomeException)
 callCommand' command =
   handle (pure . Just) $ do
     liftIO $ callCommand command
@@ -60,7 +60,7 @@ callCommand' command =
 
 -- | Run command and maybe returns an exception.
 --
-run :: MonadStatsCtx c m => String -> m (Maybe SomeException)
+run :: (MonadBaseControl IO m, MonadStatsCtx c m) => String -> m (Maybe SomeException)
 run command =
   preCtx [ "command" .= command ] $ do
     traceInfo "begin" mempty
@@ -75,7 +75,7 @@ check = maybe (pure False) (liftIO . doesFileExist)
 
 -- | Actor logic - poll for work, download artifacts, run command, upload artifacts.
 --
-act :: MonadConf c m => Text -> Bool -> Bool -> [FilePath] -> String -> m ()
+act :: (MonadBaseControl IO m, MonadResource m, MonadConf c m) => Text -> Bool -> Bool -> [FilePath] -> String -> m ()
 act queue nocopy local includes command =
   preConfCtx [ "label" .= LabelAct ] $
     runAmazonWorkCtx queue $ do
@@ -113,7 +113,7 @@ act queue nocopy local includes command =
 
 -- | Run actor from main with config file.
 --
-actMain :: MonadControl m => FilePath -> Maybe FilePath -> Maybe Text -> Maybe Text -> Maybe Text -> Text -> Int -> Bool -> Bool -> [FilePath] -> String -> m ()
+--actMain :: MonadControl m => FilePath -> Maybe FilePath -> Maybe Text -> Maybe Text -> Maybe Text -> Text -> Int -> Bool -> Bool -> [FilePath] -> String -> m ()
 actMain cf quiesce domain bucket prefix queue num nocopy local includes command =
   runCtx $ runTop $ do
     conf <- readYaml cf
@@ -123,4 +123,4 @@ actMain cf quiesce domain bucket prefix queue num nocopy local includes command 
         ok <- check quiesce
         when ok $
           liftIO exitSuccess
-        act queue nocopy local includes command
+        runResourceT $ act queue nocopy local includes command

@@ -23,14 +23,15 @@ import Network.AWS.SWF
 import Network.AWS.Wolf.Ctx
 import Network.AWS.Wolf.Prelude
 import Network.AWS.Wolf.Types
+import Control.Monad.IO.Unlift
 
 -- | Poll for activities.
 --
-pollActivity :: MonadAmazonWork c m => m (Maybe Text, Maybe Text, Maybe Text)
+pollActivity :: (MonadBaseControl IO m, MonadResource m, MonadAmazonWork c m) => m (Maybe Text, Maybe Text, Maybe Text)
 pollActivity = do
   d  <- view cDomain <$> view ccConf
   tl <- taskList <$> view awcQueue
-  runResourceT $ runAmazonCtx $ do
+  runAmazonCtx $ do
     pfatrs <- send (pollForActivityTask d tl)
     pure
       ( pfatrs ^. pfatrsTaskToken
@@ -40,11 +41,11 @@ pollActivity = do
 
 -- | Poll for decisions.
 --
-pollDecision :: MonadAmazonWork c m => m (Maybe Text, [HistoryEvent])
+pollDecision :: (MonadBaseControl IO m, MonadResource m, MonadAmazonWork c m) => m (Maybe Text, [HistoryEvent])
 pollDecision = do
   d      <- view cDomain <$> view ccConf
   tl     <- taskList <$> view awcQueue
-  runResourceT $ runAmazonCtx $ do
+  runAmazonCtx $ do
     pfdtrs <- paginate (pollForDecisionTask d tl) $$ consume
     pure
       ( join $ headMay $ view pfdtrsTaskToken <$> pfdtrs
@@ -53,43 +54,43 @@ pollDecision = do
 
 -- | Count activities.
 --
-countActivities :: MonadAmazonWork c m => m Int
+countActivities :: (MonadBaseControl IO m, MonadResource m, MonadAmazonWork c m) => m Int
 countActivities = do
   d   <- view cDomain <$> view ccConf
   tl  <- taskList <$> view awcQueue
-  runResourceT $ runAmazonCtx $ do
+  runAmazonCtx $ do
     ptc <- send (countPendingActivityTasks d tl)
     pure $ fromIntegral (ptc ^. ptcCount)
 
 -- | Count decisions.
 --
-countDecisions :: MonadAmazonWork c m => m Int
+countDecisions :: (MonadBaseControl IO m, MonadResource m, MonadAmazonWork c m) => m Int
 countDecisions = do
   d   <- view cDomain <$> view ccConf
   tl  <- taskList <$> view awcQueue
-  runResourceT $ runAmazonCtx $ do
+  runAmazonCtx $ do
     ptc <- send (countPendingDecisionTasks d tl)
     pure $ fromIntegral (ptc ^. ptcCount)
 
 -- | Successful job completion.
 --
-completeActivity :: MonadConf c m => Text -> Maybe Text -> m ()
+completeActivity :: (MonadBaseControl IO m, MonadResource m, MonadConf c m) => Text -> Maybe Text -> m ()
 completeActivity token output =
-  runResourceT $ runAmazonCtx $
+  runAmazonCtx $
     void $ send $ set ratcResult output $ respondActivityTaskCompleted token
 
 -- | Job failure.
 --
-failActivity :: MonadConf c m => Text -> m ()
+failActivity :: (MonadBaseControl IO m, MonadResource m, MonadConf c m) => Text -> m ()
 failActivity token =
-  runResourceT $ runAmazonCtx $
+  runAmazonCtx $
     void $ send $ respondActivityTaskFailed token
 
 -- | Successful decision completion.
 --
-completeDecision :: MonadConf c m => Text -> Decision -> m ()
+completeDecision :: (MonadBaseControl IO m, MonadResource m, MonadConf c m) => Text -> Decision -> m ()
 completeDecision token d =
-  runResourceT $ runAmazonCtx $
+  runAmazonCtx $
     void $ send $ set rdtcDecisions (pure d) $ respondDecisionTaskCompleted token
 
 -- | Schedule decision.

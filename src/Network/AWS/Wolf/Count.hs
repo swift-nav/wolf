@@ -17,7 +17,7 @@ import Network.AWS.Wolf.Types
 
 -- | Count pending activities.
 --
-countActivity :: MonadConf c m => Task -> m ()
+countActivity :: (MonadBaseControl IO m, MonadResource m, MonadConf c m) => Task -> m ()
 countActivity t = do
   traceInfo "count-act" [ "task" .= t ]
   let queue = t ^. tQueue
@@ -28,7 +28,7 @@ countActivity t = do
 
 -- | Count open workflows.
 --
-countDecision :: MonadConf c m => Task -> m ()
+countDecision :: (MonadBaseControl IO m, MonadResource m, MonadConf c m) => Task -> m ()
 countDecision t = do
   traceInfo "count-decision" [ "task" .= t ]
   let queue = t ^. tQueue
@@ -39,7 +39,7 @@ countDecision t = do
 
 -- | Counter logic - count all the queues.
 --
-count :: MonadConf c m => Plan -> m ()
+count :: (MonadBaseControl IO m, MonadResource m, MonadConf c m) => Plan -> m ()
 count p =
   preConfCtx [ "label" .= LabelCount ] $ do
     countDecision (p ^. pStart)
@@ -47,7 +47,7 @@ count p =
 
 -- | Run counter from main with config file.
 --
-countMain :: MonadControl m => FilePath -> FilePath -> Maybe Text -> m ()
+--countMain :: MonadControl m => FilePath -> FilePath -> Maybe Text -> m ()
 countMain cf pf domain =
   runCtx $ runTop $ do
     conf <- readYaml cf

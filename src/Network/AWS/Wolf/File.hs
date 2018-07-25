@@ -94,7 +94,7 @@ readYaml :: (MonadIO m, FromJSON a) => FilePath -> m a
 readYaml file =
   liftIO $ withFile file ReadMode $ \h -> do
     body <- BS.hGetContents h
-    eitherThrowIO' $ decodeEither body
+    decodeThrow body
 
 -- | Get a temporary timestamped work directory.
 --
@@ -122,13 +122,13 @@ copyDirectoryRecursive fd td =
 
 -- | Setup a temporary work directory.
 --
-withWorkDirectory :: MonadControl m => Text -> Bool -> (FilePath -> m a) -> m a
+withWorkDirectory :: (MonadIO m, MonadBaseControl IO m) => Text -> Bool -> (FilePath -> m a) -> m a
 withWorkDirectory uid local =
   bracket (getWorkDirectory uid local) (liftIO . removeDirectoryRecursive)
 
 -- | Change to directory and then return to current directory.
 --
-withCurrentDirectory' :: MonadControl m => FilePath -> (FilePath -> m a) -> m a
+withCurrentDirectory' :: (MonadIO m, MonadBaseControl IO m) => FilePath -> (FilePath -> m a) -> m a
 withCurrentDirectory' wd action =
   bracket (liftIO getCurrentDirectory) (liftIO . setCurrentDirectory) $ \cd -> do
     liftIO $ setCurrentDirectory wd
@@ -136,7 +136,7 @@ withCurrentDirectory' wd action =
 
 -- | Setup a temporary work directory and copy current directory files to it.
 --
-withCurrentWorkDirectory :: MonadControl m => Text -> Bool -> Bool -> (FilePath -> m a) -> m a
+withCurrentWorkDirectory :: (MonadIO m, MonadBaseControl IO m) => Text -> Bool -> Bool -> (FilePath -> m a) -> m a
 withCurrentWorkDirectory uid nocopy local action =
   withWorkDirectory uid local $ \wd ->
     withCurrentDirectory' wd $ \cd -> do

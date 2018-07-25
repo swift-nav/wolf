@@ -39,6 +39,7 @@ library
                      , bytestring
                      , conduit
                      , directory
+                     , exceptions
                      , filepath
                      , http-types
                      , lifted-async
@@ -46,6 +47,8 @@ library
                      , preamble
                      , process
                      , time
+                     , transformers-base
+                     , unliftio-core
                      , uuid
                      , yaml
 

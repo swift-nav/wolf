@@ -1,6 +1,6 @@
-resolver: lts-10.10
+resolver: lts-11.18
 packages:
 - .
 extra-deps:
-- preamble-0.0.61
+- preamble-0.0.63
 
