@@ -3,4 +3,5 @@ packages:
 - .
 extra-deps:
 - preamble-0.0.61
-
+- shake-0.16.4
+- hlint-2.0.11

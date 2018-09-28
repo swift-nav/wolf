@@ -10,6 +10,15 @@ Wolf is a wrapper around Amazon Simple Workflow Service: it providers a decider
 that implements plans, an actor that runs commands, and a registrar that
 installs plans. See [examples](examples).
 
+## Getting started
+1. Install [Haskell](haskell).
+2. Install the Haskell package manager [stack](stack).
+3. Setup your global environment:
+    1. `mkdir ~/.local/bin` if it doesn't exist already.
+    2. add `$HOME/.local/bin` to your `PATH` environment variable.
+        - This is usually in `~/.bashrc`, `~/.zshrc`, or similar.
+3. Run `stack build`. It should install all dependencies, build binaries, and
+   export those binaries to `~/.local/bin`.
 
 ## Development
 
@@ -43,7 +52,7 @@ To build, install, run, and test `wolf`, the following dependencies may be requi
 
 + [stack][stack]
 
-
+[haskell]:     https://www.haskell.org/platform/
 [wolf]:        https://github.com/swift-nav/wolf
 [wolf-img]:    https://cloud.githubusercontent.com/assets/60851/8178609/a077a326-13c4-11e5-9d54-3e417fc6dd6c.jpg
 [hackage]:     https://hackage.haskell.org/package/wolf
