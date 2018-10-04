@@ -13,11 +13,13 @@ installs plans. See [examples](examples).
 ## Getting started
 1. Install [Haskell](haskell).
 2. Install the Haskell package manager [stack](stack).
-3. Setup your global environment:
+3. Install Lint and Shake:
+    1. `stack install hlint shake`
+4. Setup your global environment:
     1. `mkdir ~/.local/bin` if it doesn't exist already.
     2. add `$HOME/.local/bin` to your `PATH` environment variable.
         - This is usually in `~/.bashrc`, `~/.zshrc`, or similar.
-3. Run `stack build`. It should install all dependencies, build binaries, and
+5. Run `stack build`. It should install all dependencies, build binaries, and
    export those binaries to `~/.local/bin`.
 
 ## Development
