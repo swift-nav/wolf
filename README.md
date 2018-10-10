@@ -10,6 +10,25 @@ Wolf is a wrapper around Amazon Simple Workflow Service: it providers a decider
 that implements plans, an actor that runs commands, and a registrar that
 installs plans. See [examples](examples).
 
+## Getting started
+1. Install [Haskell](haskell).
+2. Install the Haskell package manager [stack](stack).
+3. Setup your global environment:
+    1. `mkdir ~/.local/bin` if it doesn't exist already.
+    2. add `$HOME/.local/bin` to your `PATH` environment variable.
+        - This is usually in `~/.bashrc`, `~/.zshrc`, or similar.
+4. Install build dependencies in the `wolf` stack:
+    1. `stack install hlint shake-0.16.4 shakers happy`
+5. Run `stack build`. It should install all dependencies, build binaries, and
+   export those binaries to `~/.local/bin`.
+
+Alternatively, read the `.travis.yaml` file.
+
+## Docker getting started
+1. Install [Docker](docker).
+2. Ensure your AWS permissions are current: Docker will build from an
+   intermediate image hosted on swiftnav's AWS ECR.
+3. Run `docker build --rm -t wolf-dev .`
 
 ## Development
 
@@ -39,11 +58,25 @@ installs plans. See [examples](examples).
 
 ## Dependencies
 
-To build, install, run, and test `wolf`, the following dependencies may be required:
+To build, install, run, and test `wolf`, the following (global) dependencies may
+be required:
 
 + [stack][stack]
++ [lint][lint]
++ [shake][shake]
++ [shakers][shakers]
 
+## Common build errors
 
+### "Plan construction failed."
+When building tests using `./Shakefile.hs build-tests-error`, the ambiguous
+`Plan construction failed.` error may rear its head. Make sure your `gcc`
+installation is clean (`brew doctor` may help), and make sure you've installed
+`stack`, `shake`, and `shakers`. Essentially, what this error is telling you is
+that either `shake` isn't installed, isn't available to the `./Shakefile.hs`, or
+is otherwise broken.
+
+[haskell]:     https://www.haskell.org/platform/
 [wolf]:        https://github.com/swift-nav/wolf
 [wolf-img]:    https://cloud.githubusercontent.com/assets/60851/8178609/a077a326-13c4-11e5-9d54-3e417fc6dd6c.jpg
 [hackage]:     https://hackage.haskell.org/package/wolf
@@ -53,3 +86,7 @@ To build, install, run, and test `wolf`, the following dependencies may be requi
 [deps]:        http://packdeps.haskellers.com/feed?needle=wolf
 [deps-img]:    https://img.shields.io/hackage-deps/v/wolf.svg?style=flat
 [stack]:       https://docs.haskellstack.org/en/stable/README/#how-to-install
+[lint]:        https://hackage.haskell.org/package/hlint
+[stylish]:     https://hackage.haskell.org/package/stylish-haskell
+[shake]:       https://shakebuild.com/
+[docker]:      https://www.docker.com/get-started
