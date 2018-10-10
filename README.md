@@ -72,7 +72,9 @@ be required:
 When building tests using `./Shakefile.hs build-tests-error`, the ambiguous
 `Plan construction failed.` error may rear its head. Make sure your `gcc`
 installation is clean (`brew doctor` may help), and make sure you've installed
-`stack`, `shake`, and `shakers`.
+`stack`, `shake`, and `shakers`. Essentially, what this error is telling you is
+that either `shake` isn't installed, isn't available to the `./Shakefile.hs`, or
+is otherwise broken.
 
 [haskell]:     https://www.haskell.org/platform/
 [wolf]:        https://github.com/swift-nav/wolf
