@@ -18,9 +18,17 @@ installs plans. See [examples](examples).
     2. add `$HOME/.local/bin` to your `PATH` environment variable.
         - This is usually in `~/.bashrc`, `~/.zshrc`, or similar.
 4. Install build dependencies in the `wolf` stack:
-    1. `stack install hlint shake shakers happy`
+    1. `stack install hlint shake-0.16.4 shakers happy`
 5. Run `stack build`. It should install all dependencies, build binaries, and
    export those binaries to `~/.local/bin`.
+
+Alternatively, read the `.travis.yaml` file.
+
+## Docker getting started
+1. Install [Docker](docker).
+2. Ensure your AWS permissions are current: Docker will build from an
+   intermediate image hosted on swiftnav's AWS ECR.
+3. Run `docker build --rm -t wolf-dev .`
 
 ## Development
 
@@ -79,3 +87,4 @@ installation is clean (`brew doctor` may help), and make sure you've installed
 [lint]:        https://hackage.haskell.org/package/hlint
 [stylish]:     https://hackage.haskell.org/package/stylish-haskell
 [shake]:       https://shakebuild.com/
+[docker]:      https://www.docker.com/get-started
