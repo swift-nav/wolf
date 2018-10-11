@@ -3,4 +3,3 @@ packages:
 - .
 extra-deps:
 - preamble-0.0.61
-- shakers-0.0.48
