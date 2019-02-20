@@ -75,8 +75,8 @@ check = maybe (pure False) (liftIO . doesFileExist)
 
 -- | Actor logic - poll for work, download artifacts, run command, upload artifacts.
 --
-act :: MonadConf c m => Text -> Bool -> Bool -> [FilePath] -> String -> m ()
-act queue nocopy local includes command =
+act :: MonadConf c m => Text -> Bool -> Bool -> [FilePath] -> String -> FilePath -> m ()
+act queue nocopy local includes command configfile =
   preConfCtx [ "label" .= LabelAct ] $
     runAmazonWorkCtx queue $ do
       traceInfo "poll" mempty
@@ -96,6 +96,7 @@ act queue nocopy local includes command =
               isd <- inputDirectory sd
               osd <- outputDirectory sd
               msd <- metaDirectory sd
+              liftIO $ copyFile configfile (osd </> "config.ini")
               writeJson (dd </> "control.json") (Control uid')
               writeText (dd </> "input.json") input
               writeText (msd </> (textToString queue <> "_input.json")) input
@@ -123,4 +124,4 @@ actMain cf quiesce domain bucket prefix queue num nocopy local includes command 
         ok <- check quiesce
         when ok $
           liftIO exitSuccess
-        act queue nocopy local includes command
+        act queue nocopy local includes command cf
