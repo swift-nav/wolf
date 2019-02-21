@@ -96,7 +96,8 @@ act queue nocopy local includes command storeconf =
               isd <- inputDirectory sd
               osd <- outputDirectory sd
               msd <- metaDirectory sd
-              conf <- view cPrefix <$> view ccConf
+              conf <- view ccConf
+              -- conf <- view cPrefix <$> view ccConf
               when storeconf (writeYaml (osd </> "config.yml") conf)
               writeJson (dd </> "control.json") (Control uid')
               writeText (dd </> "input.json") input
