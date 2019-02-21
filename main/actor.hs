@@ -14,7 +14,7 @@ import Options.Generic
 data Args = Args
   { config  :: FilePath
     -- ^ Configuration file.
-  , copyconfig :: Maybe Bool
+  , storeconf :: Maybe Bool
     -- ^ Optional copy configuration file to output dorectory.
   , quiesce :: Maybe FilePath
     -- ^ Optional quiesce file to stop actor.
@@ -47,7 +47,7 @@ main = do
   args <- getRecord "Actor"
   actMain
     (config args)
-    (fromMaybe False $ copyconfig args)
+    (fromMaybe False $ storeconf args)
     (quiesce args)
     (domain args)
     (bucket args)
