@@ -62,3 +62,4 @@ To build, install, run, and test `wolf`, the following dependencies may be requi
 [deps]:        http://packdeps.haskellers.com/feed?needle=wolf
 [deps-img]:    https://img.shields.io/hackage-deps/v/wolf.svg?style=flat
 [stack]:       https://docs.haskellstack.org/en/stable/README/#how-to-install
+
