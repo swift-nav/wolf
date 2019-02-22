@@ -75,8 +75,8 @@ check = maybe (pure False) (liftIO . doesFileExist)
 
 -- | Actor logic - poll for work, download artifacts, run command, upload artifacts.
 --
-act :: MonadConf c m => Text -> Bool -> Bool -> [FilePath] -> String -> m ()
-act queue nocopy local includes command =
+act :: MonadConf c m => Text -> Bool -> Bool -> [FilePath] -> String -> Bool -> m ()
+act queue nocopy local includes command storeconf =
   preConfCtx [ "label" .= LabelAct ] $
     runAmazonWorkCtx queue $ do
       traceInfo "poll" mempty
@@ -96,6 +96,8 @@ act queue nocopy local includes command =
               isd <- inputDirectory sd
               osd <- outputDirectory sd
               msd <- metaDirectory sd
+              conf <- view ccConf
+              when storeconf (writeYaml (osd </> "config.yml") conf)
               writeJson (dd </> "control.json") (Control uid')
               writeText (dd </> "input.json") input
               writeText (msd </> (textToString queue <> "_input.json")) input
@@ -113,8 +115,8 @@ act queue nocopy local includes command =
 
 -- | Run actor from main with config file.
 --
-actMain :: MonadControl m => FilePath -> Maybe FilePath -> Maybe Text -> Maybe Text -> Maybe Text -> Text -> Int -> Bool -> Bool -> [FilePath] -> String -> m ()
-actMain cf quiesce domain bucket prefix queue num nocopy local includes command =
+actMain :: MonadControl m => FilePath -> Bool -> Maybe FilePath -> Maybe Text -> Maybe Text -> Maybe Text -> Text -> Int -> Bool -> Bool -> [FilePath] -> String -> m ()
+actMain cf storeconf quiesce domain bucket prefix queue num nocopy local includes command =
   runCtx $ runTop $ do
     conf <- readYaml cf
     let conf' = override cPrefix prefix $ override cBucket bucket $ override cDomain domain conf
@@ -123,4 +125,4 @@ actMain cf quiesce domain bucket prefix queue num nocopy local includes command 
         ok <- check quiesce
         when ok $
           liftIO exitSuccess
-        act queue nocopy local includes command
+        act queue nocopy local includes command storeconf

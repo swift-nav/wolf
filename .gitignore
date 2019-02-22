@@ -11,3 +11,7 @@ cabal-dev
 cabal.sandbox.config
 .stack-work/
 .build/
+
+*.swo
+*.swp
+*.swn

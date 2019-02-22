@@ -12,6 +12,7 @@ module Network.AWS.Wolf.File
   , writeText
   , readText
   , writeJson
+  , writeYaml
   , readYaml
   , withCurrentWorkDirectory
   ) where
@@ -87,6 +88,11 @@ writeJson :: (MonadIO m, ToJSON a) => FilePath -> a -> m ()
 writeJson file item =
   liftIO $ withFile file WriteMode $ \h ->
     BS.hPut h $ LBS.toStrict $ encode item
+
+-- | Encode from YAML and write file.
+--
+writeYaml :: (MonadIO m, ToJSON a) => FilePath -> a -> m ()
+writeYaml file item = liftIO $ encodeFile file item
 
 -- | Read file and decode it from YAML.
 --
