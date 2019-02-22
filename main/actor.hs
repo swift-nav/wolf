@@ -14,8 +14,8 @@ import Options.Generic
 data Args = Args
   { config  :: FilePath
     -- ^ Configuration file.
-  , storeconf :: Maybe Bool
-    -- ^ Optional copy configuration file to output dorectory.
+  , storeconf :: Bool
+    -- ^ Optional copy configuration file to output dorectory. (default: False)
   , quiesce :: Maybe FilePath
     -- ^ Optional quiesce file to stop actor.
   , domain  :: Maybe Text
@@ -29,9 +29,9 @@ data Args = Args
   , num     :: Maybe Int
     -- ^ Number of actors to run concurrently.
   , nocopy  :: Bool
-    -- ^ Copy working directory.
+    -- ^ Copy working directory. (default: False)
   , local   :: Bool
-    -- ^ Run locally, not in a temp directory.
+    -- ^ Run locally, not in a temp directory. (default: False)
   , include :: [FilePath]
     -- ^ Optional artifacts to filter.
   , command :: String
@@ -47,7 +47,7 @@ main = do
   args <- getRecord "Actor"
   actMain
     (config args)
-    (fromMaybe False $ storeconf args)
+    (storeconf args)
     (quiesce args)
     (domain args)
     (bucket args)
