@@ -24,10 +24,10 @@ data Args = Args
     -- ^ Optional bucket to use.
   , prefix  :: Maybe Text
     -- ^ Optional prefix to use.
-  , queue   :: Text
+  , queue   :: [Text]
     -- ^ Queue to listen to act on.
   , num     :: Maybe Int
-    -- ^ Number of actors to run concurrently.
+    -- ^ Number of actors to run concurrently per queue.
   , nocopy  :: Bool
     -- ^ Copy working directory. (default: False)
   , local   :: Bool

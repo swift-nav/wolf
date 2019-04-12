@@ -113,16 +113,20 @@ act queue nocopy local includes command storeconf =
               statsIncrement "wolf.act.activity.count" [ "queue" =. queue, "status" =. status ]
               statsHistogram "wolf.act.activity.elapsed" (realToFrac (diffUTCTime t3 t2) :: Double) [ "queue" =. queue ]
 
+
 -- | Run actor from main with config file.
 --
-actMain :: MonadControl m => FilePath -> Bool -> Maybe FilePath -> Maybe Text -> Maybe Text -> Maybe Text -> Text -> Int -> Bool -> Bool -> [FilePath] -> String -> m ()
-actMain cf storeconf quiesce domain bucket prefix queue num nocopy local includes command =
+actMain :: MonadControl m => FilePath -> Bool -> Maybe FilePath -> Maybe Text -> Maybe Text -> Maybe Text -> [Text] -> Int -> Bool -> Bool -> [FilePath] -> String -> m ()
+actMain cf storeconf quiesce domain bucket prefix queues num nocopy local includes command =
   runCtx $ runTop $ do
     conf <- readYaml cf
     let conf' = override cPrefix prefix $ override cBucket bucket $ override cDomain domain conf
     runConfCtx conf' $
-      runConcurrent $ replicate num $ forever $ do
-        ok <- check quiesce
-        when ok $
-          liftIO exitSuccess
-        act queue nocopy local includes command storeconf
+      runConcurrent $
+        f <$> concatMap (replicate num) queues
+  where
+    f queue = forever $ do
+      ok <- check quiesce
+      when ok $
+        liftIO exitSuccess
+      act queue nocopy local includes command storeconf
