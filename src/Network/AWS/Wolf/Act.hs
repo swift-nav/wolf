@@ -122,11 +122,9 @@ actMain cf storeconf quiesce domain bucket prefix queues num nocopy local includ
     conf <- readYaml cf
     let conf' = override cPrefix prefix $ override cBucket bucket $ override cDomain domain conf
     runConfCtx conf' $
-      runConcurrent $
-        f <$> concatMap (replicate num) queues
-  where
-    f queue = forever $ do
-      ok <- check quiesce
-      when ok $
-        liftIO exitSuccess
-      act queue nocopy local includes command storeconf
+      runConcurrent $ replicate num $ forever $
+        forM_ (cycle queues) $ \queue -> do
+          ok <- check quiesce
+          when ok $
+            liftIO exitSuccess
+          act queue nocopy local includes command storeconf
