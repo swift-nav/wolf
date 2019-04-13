@@ -27,7 +27,7 @@ data Args = Args
   , queue   :: [Text]
     -- ^ Queue to listen to act on.
   , num     :: Maybe Int
-    -- ^ Number of actors to run concurrently per queue.
+    -- ^ Number of actors to run concurrently.
   , nocopy  :: Bool
     -- ^ Copy working directory. (default: False)
   , local   :: Bool
