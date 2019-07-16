@@ -29,9 +29,9 @@ function execute-loop {
     execute-loop
 }
 
-#stack exec wolf-decider -- --config config.yaml --plan plan.yaml &
-#stack exec wolf-actor   -- --config config.yaml --queue hello-queue --command "python hello.py" &
-#stack exec wolf-actor   -- --config config.yaml --queue world-queue --command "python world.py" &
+stack exec wolf-decider -- --config config.yaml --plan plan.yaml &
+stack exec wolf-actor   -- --config config.yaml --queue hello-queue --command "python hello.py" &
+stack exec wolf-actor   -- --config config.yaml --queue world-queue --command "python world.py" &
 
 execute-loop &
 
