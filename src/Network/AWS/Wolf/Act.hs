@@ -20,10 +20,15 @@ import System.Directory
 import System.Exit
 import System.Process
 
--- | S3 copy call.
+-- | S3 upload.  Use sync to avoid re-uploading existing data.
 --
-cp :: MonadIO m => [FilePath] -> m ()
-cp = liftIO . callProcess "aws" . (["s3", "sync", "--quiet"] <>)
+s3Upload :: MonadIO m => [FilePath] -> m ()
+s3Upload = liftIO . callProcess "aws" . (["s3", "sync", "--quiet"] <>)
+
+-- | S3 download.
+--
+s3Download :: MonadIO m => [FilePath] -> m ()
+s3Download = liftIO . callProcess "aws" . (["s3", "cp", "--recursive", "--quiet"] <>)
 
 -- | Key to download and upload objects from.
 --
@@ -40,7 +45,7 @@ download dir includes = do
   traceInfo "download" [ "dir" .= dir, "includes" .= includes ]
   let includes' = bool ([ "--exclude", "*" ] <> interleave (repeat "--include") includes) mempty $ null includes
   k <- key
-  cp $ includes' <> [ k, dir ]
+  s3Upload $ includes' <> [ k, dir ]
 
 -- | Upload artifacts from the store output directory.
 --
@@ -48,7 +53,7 @@ upload :: MonadAmazonStore c m => FilePath -> m ()
 upload dir = do
   traceInfo "upload" [ "dir" .= dir ]
   k <- key
-  cp [ dir, k ]
+  s3Download [ dir, k ]
 
 -- | callCommand wrapper that maybe returns an exception.
 --
