@@ -20,10 +20,35 @@ import System.Directory
 import System.Exit
 import System.Process
 
+import qualified Codec.Archive.Tar as Tar
+import qualified Data.ByteString.Lazy as BS
+import qualified Codec.Compression.GZip as GZip
+
+createTgz :: FilePath -> FilePath -> [FilePath] -> IO ()
+createTgz tar base dir = 
+  BS.writeFile tar . GZip.compress . Tar.write =<< Tar.pack base dir
+
+extractTgz :: FilePath -> FilePath -> IO ()
+extractTgz dir tar =
+  Tar.unpack dir . Tar.read . GZip.decompress =<< BS.readFile tar 
+
+downloadTgz :: MonadIO m => FilePath -> FilePath -> m ()
+downloadTgz s3key dir = do
+  liftIO $ callProcess "aws" ["s3", "cp", "--quiet", s3key, dir <> ".tgz"]
+  liftIO $ extractTgz "." (dir <> ".tgz")
+  pure ()
+
+uploadTgz :: MonadIO m => FilePath -> FilePath -> m ()
+uploadTgz dir s3key = do
+  liftIO $ createTgz (dir <> ".tgz") dir ["."]
+  liftIO $ callProcess "aws" ["s3", "cp", "--quiet", dir <> ".tgz", s3key]
+  pure ()
+
 -- | S3 copy call.
 --
-cp :: MonadIO m => [FilePath] -> m ()
-cp = liftIO . callProcess "aws" . (["s3", "sync", "--quiet"] <>)
+sync :: MonadIO m => [FilePath] -> m ()
+sync = do
+  liftIO . callProcess "aws" . (["s3", "sync", "--quiet"] <>)
 
 -- | Key to download and upload objects from.
 --
@@ -38,17 +63,20 @@ key = do
 download :: MonadAmazonStore c m => FilePath -> [FilePath] -> m ()
 download dir includes = do
   traceInfo "download" [ "dir" .= dir, "includes" .= includes ]
-  let includes' = bool ([ "--exclude", "*" ] <> interleave (repeat "--include") includes) mempty $ null includes
   k <- key
-  cp $ includes' <> [ k, dir ]
+  if null includes then
+    downloadTgz k dir
+  else do
+    let includes' = [ "--exclude", "*" ] <> interleave (repeat "--include") includes
+    sync $ includes' <> [ k, dir ]
 
 -- | Upload artifacts from the store output directory.
 --
-upload :: MonadAmazonStore c m => FilePath -> m ()
-upload dir = do
+upload :: MonadAmazonStore c m => FilePath -> Bool -> m ()
+upload dir noIncludes = do
   traceInfo "upload" [ "dir" .= dir ]
   k <- key
-  cp [ dir, k ]
+  bool (uploadTgz dir k) (sync [ dir, k ]) noIncludes
 
 -- | callCommand wrapper that maybe returns an exception.
 --
@@ -103,7 +131,7 @@ act queue nocopy local includes command storeconf =
               writeText (msd </> (textToString queue <> "_input.json")) input
               download isd includes
               e <- run command
-              upload osd
+              upload osd $ null includes
               output <- readText (dd </> "output.json")
               writeText (msd </> (textToString queue <> "_output.json")) output
               maybe (completeActivity token' output) (const $ failActivity token') e

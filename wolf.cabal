@@ -45,9 +45,11 @@ library
                      , lifted-base
                      , preamble
                      , process
+                     , tar
                      , time
                      , uuid
                      , yaml
+                     , zlib
 
 executable wolf-actor
   hs-source-dirs:      main
