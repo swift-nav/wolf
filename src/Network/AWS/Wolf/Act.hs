@@ -47,8 +47,7 @@ uploadTgz dir s3key = do
 -- | S3 copy call.
 --
 sync :: MonadIO m => [FilePath] -> m ()
-sync = do
-  liftIO . callProcess "aws" . (["s3", "sync", "--quiet"] <>)
+sync = liftIO . callProcess "aws" . (["s3", "sync", "--quiet"] <>)
 
 -- | Key to download and upload objects from.
 --
