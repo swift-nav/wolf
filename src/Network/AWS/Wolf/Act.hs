@@ -72,11 +72,12 @@ run command =
 
 -- | Run a heartbeat.
 --
-runHeartbeat :: MonadConf c m => Int -> Text -> FilePath -> m ()
-runHeartbeat interval token msd = do
+runHeartbeat :: MonadConf c m => Bool -> Int -> Text -> FilePath -> m ()
+runHeartbeat heartbeat interval token msd = do
   traceInfo "heartbeat" mempty
   let f = msd </> "heartbeat"
-  writeText f mempty
+  when heartbeat $
+    writeText f mempty
   liftIO $ threadDelay $ interval * 1000000
   ok <- liftIO $ doesFileExist f
   if ok then do
@@ -84,7 +85,7 @@ runHeartbeat interval token msd = do
     failActivity token
   else do
     nok <- heartbeatActivity token
-    if not nok then runHeartbeat interval token msd else do
+    if not nok then runHeartbeat heartbeat interval token msd else do
       traceInfo "cancel" mempty
       cancelActivity token
 
@@ -95,8 +96,8 @@ check = maybe (pure False) (liftIO . doesFileExist)
 
 -- | Actor logic - poll for work, download artifacts, run command, upload artifacts.
 --
-act :: MonadConf c m => Text -> Bool -> Bool -> [FilePath] -> String -> Bool -> Int -> m ()
-act queue nocopy local includes command storeconf interval =
+act :: MonadConf c m => Text -> Bool -> Bool -> Bool -> [FilePath] -> String -> Bool -> Int -> m ()
+act queue heartbeat nocopy local includes command storeconf interval =
   preConfCtx [ "label" .= LabelAct ] $
     runAmazonWorkCtx queue $ do
       traceInfo "poll" mempty
@@ -123,7 +124,7 @@ act queue nocopy local includes command storeconf interval =
               writeText (dd </> "input.json") input
               writeText (msd </> (textToString queue <> "_input.json")) input
               download isd includes
-              race_ (runHeartbeat interval token' msd) $ do
+              race_ (runHeartbeat heartbeat interval token' msd) $ do
                 e <- run command
                 upload osd
                 output <- readText (dd </> "output.json")
@@ -138,8 +139,8 @@ act queue nocopy local includes command storeconf interval =
 
 -- | Run actor from main with config file.
 --
-actMain :: MonadControl m => FilePath -> Bool -> Maybe FilePath -> Maybe Text -> Maybe Text -> Maybe Text -> [Text] -> Int -> Int -> Bool -> Bool -> [FilePath] -> String -> m ()
-actMain cf storeconf quiesce domain bucket prefix queues num interval nocopy local includes command =
+actMain :: MonadControl m => FilePath -> Bool -> Maybe FilePath -> Maybe Text -> Maybe Text -> Maybe Text -> [Text] -> Int -> Int -> Bool -> Bool -> Bool -> [FilePath] -> String -> m ()
+actMain cf storeconf quiesce domain bucket prefix queues num interval heartbeat nocopy local includes command =
   runCtx $ runTop $ do
     conf <- readYaml cf
     let conf' = override cPrefix prefix $ override cBucket bucket $ override cDomain domain conf
@@ -149,4 +150,4 @@ actMain cf storeconf quiesce domain bucket prefix queues num interval nocopy loc
           ok <- check quiesce
           when ok $
             liftIO exitSuccess
-          act queue nocopy local includes command storeconf interval
+          act queue heartbeat nocopy local includes command storeconf interval

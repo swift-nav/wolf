@@ -28,8 +28,10 @@ data Args = Args
     -- ^ Queue to listen to act on.
   , num       :: Maybe Int
     -- ^ Number of actors to run concurrently.
-  , interval  :: Int
-    -- ^ Interval to heartbeat at.
+  , interval  :: Maybe Int
+    -- ^ Interval to heartbeat at (seconds).
+  , heartbeat :: Bool
+    -- ^ Command controls heartbeat.
   , nocopy    :: Bool
     -- ^ Copy working directory. (default: False)
   , local     :: Bool
@@ -56,7 +58,8 @@ main = do
     (prefix args)
     (queue args)
     (fromMaybe 1 $ num args)
-    (interval args)
+    (fromMaybe 300 $ interval args)
+    (heartbeat args)
     (nocopy args)
     (local args)
     (include args)
