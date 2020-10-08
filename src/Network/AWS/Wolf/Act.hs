@@ -75,7 +75,7 @@ run command =
 runHeartbeat :: MonadConf c m => Int -> Text -> FilePath -> m ()
 runHeartbeat interval token msd = do
   traceInfo "heartbeat" mempty
-  let f = (msd </> "heartbeat")
+  let f = msd </> "heartbeat"
   writeText f mempty
   liftIO $ threadDelay $ interval * 1000000
   ok <- liftIO $ doesFileExist f
@@ -107,7 +107,7 @@ act queue nocopy local includes command storeconf interval =
       statsHistogram "wolf.act.poll.elapsed" (realToFrac (diffUTCTime t1 t0) :: Double) [ "queue" =. queue ]
       maybe_ token $ \token' ->
         maybe_ uid $ \uid' ->
-          withCurrentWorkDirectory uid' nocopy local $ \wd -> do
+          withCurrentWorkDirectory uid' nocopy local $ \wd ->
             runAmazonStoreCtx uid' $ do
               traceInfo "start" [ "dir" .= wd ]
               t2   <- liftIO getCurrentTime
