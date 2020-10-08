@@ -88,6 +88,21 @@ runHeartbeat interval token msd = do
       traceInfo "cancel" mempty
       cancelActivity token
 
+-- | Run the command and upload the results.
+--
+startCommand :: MonadAmazonStore c m => String -> FilePath -> FilePath -> FilePath -> Text -> Text -> FilePath -> UTCTime -> m ()
+startCommand command osd dd msd queue token wd t2 = do
+  e <- run command
+  upload osd
+  output <- readText (dd </> "output.json")
+  writeText (msd </> (textToString queue <> "_output.json")) output
+  maybe (completeActivity token output) (const $ failActivity token) e
+  t3 <- liftIO getCurrentTime
+  traceInfo "finish" [ "dir" .= wd ]
+  let status = textFromString $ maybe "complete" (const "fail") e
+  statsIncrement "wolf.act.activity.count" [ "queue" =. queue, "status" =. status ]
+  statsHistogram "wolf.act.activity.elapsed" (realToFrac (diffUTCTime t3 t2) :: Double) [ "queue" =. queue ]
+
 -- | Check if quiesce file is present.
 --
 check :: MonadIO m => Maybe FilePath -> m Bool
@@ -95,7 +110,7 @@ check = maybe (pure False) (liftIO . doesFileExist)
 
 -- | Actor logic - poll for work, download artifacts, run command, upload artifacts.
 --
-act :: MonadConf c m => Text -> Bool -> Bool -> [FilePath] -> String -> Bool -> Int -> m ()
+act :: MonadConf c m => Text -> Bool -> Bool -> [FilePath] -> String -> Bool -> Maybe Int -> m ()
 act queue nocopy local includes command storeconf interval =
   preConfCtx [ "label" .= LabelAct ] $
     runAmazonWorkCtx queue $ do
@@ -123,22 +138,13 @@ act queue nocopy local includes command storeconf interval =
               writeText (dd </> "input.json") input
               writeText (msd </> (textToString queue <> "_input.json")) input
               download isd includes
-              race_ (runHeartbeat interval token' msd) $ do
-                e <- run command
-                upload osd
-                output <- readText (dd </> "output.json")
-                writeText (msd </> (textToString queue <> "_output.json")) output
-                maybe (completeActivity token' output) (const $ failActivity token') e
-                t3 <- liftIO getCurrentTime
-                traceInfo "finish" [ "dir" .= wd ]
-                let status = textFromString $ maybe "complete" (const "fail") e
-                statsIncrement "wolf.act.activity.count" [ "queue" =. queue, "status" =. status ]
-                statsHistogram "wolf.act.activity.elapsed" (realToFrac (diffUTCTime t3 t2) :: Double) [ "queue" =. queue ]
-
+              case interval of
+                   Just i -> race_ (runHeartbeat i token' msd) $ startCommand command osd dd msd queue token' wd t2
+                   Nothing -> startCommand command osd dd msd queue token' wd t2
 
 -- | Run actor from main with config file.
 --
-actMain :: MonadControl m => FilePath -> Bool -> Maybe FilePath -> Maybe Text -> Maybe Text -> Maybe Text -> [Text] -> Int -> Int -> Bool -> Bool -> [FilePath] -> String -> m ()
+actMain :: MonadControl m => FilePath -> Bool -> Maybe FilePath -> Maybe Text -> Maybe Text -> Maybe Text -> [Text] -> Int -> Maybe Int -> Bool -> Bool -> [FilePath] -> String -> m ()
 actMain cf storeconf quiesce domain bucket prefix queues num interval nocopy local includes command =
   runCtx $ runTop $ do
     conf <- readYaml cf
