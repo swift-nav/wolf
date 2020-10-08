@@ -10,6 +10,8 @@ module Network.AWS.Wolf.SWF
   , countDecisions
   , completeActivity
   , failActivity
+  , cancelActivity
+  , heartbeatActivity
   , completeDecision
   , scheduleWork
   , completeWork
@@ -84,6 +86,21 @@ failActivity :: MonadConf c m => Text -> m ()
 failActivity token =
   runResourceT $ runAmazonCtx $
     void $ send $ respondActivityTaskFailed token
+
+-- | Cancel activity.
+--
+cancelActivity :: MonadConf c m => Text -> m ()
+cancelActivity token =
+  runResourceT $ runAmazonCtx $
+    void $ send $ respondActivityTaskCanceled token
+
+-- | Heartbeat activity.
+--
+heartbeatActivity :: MonadConf c m => Text -> m Bool
+heartbeatActivity token =
+  runResourceT $ runAmazonCtx $ do
+    rathrs <- send $ recordActivityTaskHeartbeat token
+    pure (rathrs ^. rathrsCancelRequested)
 
 -- | Successful decision completion.
 --
