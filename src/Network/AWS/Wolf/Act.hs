@@ -92,8 +92,8 @@ startHearbeat interval token wd = do
 
 -- | Run command.
 --
-startCommand :: MonadAmazonStore c m => Text -> String -> Text -> FilePath -> UTCTime -> m ()
-startCommand queue command token wd t2 = do
+startCommand :: MonadAmazonStore c m => Text -> String -> Text -> FilePath -> m ()
+startCommand queue command token wd = do
   traceInfo "command" mempty
   dd   <- dataDirectory wd
   sd   <- storeDirectory wd
@@ -104,11 +104,8 @@ startCommand queue command token wd t2 = do
   output <- readText (dd </> "output.json")
   writeText (msd </> (textToString queue <> "_output.json")) output
   maybe (completeActivity token output) (const $ failActivity token) e
-  t3 <- liftIO getCurrentTime
-  traceInfo "finish" [ "dir" .= wd ]
   let status = textFromString $ maybe "complete" (const "fail") e
   statsIncrement "wolf.act.activity.count" [ "queue" =. queue, "status" =. status ]
-  statsHistogram "wolf.act.activity.elapsed" (realToFrac (diffUTCTime t3 t2) :: Double) [ "queue" =. queue ]
 
 -- | Check if quiesce file is present.
 --
@@ -145,8 +142,11 @@ act queue nocopy local includes command storeconf interval =
               writeText (dd </> "input.json") input
               writeText (msd </> (textToString queue <> "_input.json")) input
               download isd includes
-              maybe' interval (startCommand queue command token' wd t2) $ \interval' ->
-                race_ (startHearbeat interval' token' wd) (startCommand queue command token' wd t2)
+              maybe' interval (startCommand queue command token' wd) $ \interval' ->
+                race_ (startHearbeat interval' token' wd) (startCommand queue command token' wd)
+              t3 <- liftIO getCurrentTime
+              statsHistogram "wolf.act.activity.elapsed" (realToFrac (diffUTCTime t3 t2) :: Double) [ "queue" =. queue ]
+              traceInfo "finish" [ "dir" .= wd ]
 
 -- | Run actor from main with config file.
 --
