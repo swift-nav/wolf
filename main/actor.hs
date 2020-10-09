@@ -49,7 +49,6 @@ main = do
   args <- getRecord "Actor"
   actMain
     (config args)
-    (storeconf args)
     (quiesce args)
     (domain args)
     (bucket args)

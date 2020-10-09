@@ -70,25 +70,32 @@ run command =
     traceInfo "end" [ "exception" .= (displayException <$> e) ]
     pure e
 
+-- | Check if optional file is present.
+--
+check :: MonadIO m => Maybe FilePath -> m Bool
+check = maybe (pure False) (liftIO . doesFileExist)
+
 -- | Run a heartbeat.
 --
-startHearbeat :: MonadConf c m => Int -> Text -> FilePath -> m ()
-startHearbeat interval token wd = do
+startHearbeat :: MonadConf c m => Text -> Int -> Text -> FilePath -> m ()
+startHearbeat queue interval token wd = do
   traceInfo "heartbeat" mempty
   sd  <- storeDirectory wd
   msd <- metaDirectory sd
   let f = msd </> "heartbeat"
   writeText f mempty
   liftIO $ threadDelay $ interval * 1000000
-  ok <- liftIO $ doesFileExist f
+  ok <- check $ pure f
   if ok then do
     traceInfo "fail" mempty
     failActivity token
+    statsIncrement "wolf.act.activity.count" [ "queue" =. queue, "status" =. "fail" ]
   else do
     nok <- heartbeatActivity token
-    if not nok then startHearbeat interval token msd else do
+    if not nok then startHearbeat queue interval token msd else do
       traceInfo "cancel" mempty
       cancelActivity token
+      statsIncrement "wolf.act.activity.count" [ "queue" =. queue, "status" =. "cancel" ]
 
 -- | Run command.
 --
@@ -107,15 +114,10 @@ startCommand queue command token wd = do
   let status = textFromString $ maybe "complete" (const "fail") e
   statsIncrement "wolf.act.activity.count" [ "queue" =. queue, "status" =. status ]
 
--- | Check if quiesce file is present.
---
-check :: MonadIO m => Maybe FilePath -> m Bool
-check = maybe (pure False) (liftIO . doesFileExist)
-
 -- | Actor logic - poll for work, download artifacts, run command, upload artifacts.
 --
-act :: MonadConf c m => Text -> Bool -> Bool -> [FilePath] -> String -> Bool -> Maybe Int -> m ()
-act queue nocopy local includes command storeconf interval =
+act :: MonadConf c m => Text -> Bool -> Bool -> [FilePath] -> String -> Maybe Int -> m ()
+act queue nocopy local includes command interval =
   preConfCtx [ "label" .= LabelAct ] $
     runAmazonWorkCtx queue $ do
       traceInfo "poll" mempty
@@ -136,22 +138,21 @@ act queue nocopy local includes command storeconf interval =
               osd  <- outputDirectory sd
               msd  <- metaDirectory sd
               conf <- view ccConf
-              when storeconf $
-                writeYaml (osd </> "config.yml") conf
+              writeYaml (osd </> "config.yml") conf
               writeJson (dd </> "control.json") (Control uid')
               writeText (dd </> "input.json") input
               writeText (msd </> (textToString queue <> "_input.json")) input
               download isd includes
               maybe' interval (startCommand queue command token' wd) $ \interval' ->
-                race_ (startHearbeat interval' token' wd) (startCommand queue command token' wd)
+                race_ (startHearbeat queue interval' token' wd) (startCommand queue command token' wd)
               t3 <- liftIO getCurrentTime
               statsHistogram "wolf.act.activity.elapsed" (realToFrac (diffUTCTime t3 t2) :: Double) [ "queue" =. queue ]
               traceInfo "finish" [ "dir" .= wd ]
 
 -- | Run actor from main with config file.
 --
-actMain :: MonadControl m => FilePath -> Bool -> Maybe FilePath -> Maybe Text -> Maybe Text -> Maybe Text -> [Text] -> Int -> Maybe Int -> Bool -> Bool -> [FilePath] -> String -> m ()
-actMain cf storeconf quiesce domain bucket prefix queues num interval nocopy local includes command =
+actMain :: MonadControl m => FilePath -> Maybe FilePath -> Maybe Text -> Maybe Text -> Maybe Text -> [Text] -> Int -> Maybe Int -> Bool -> Bool -> [FilePath] -> String -> m ()
+actMain cf quiesce domain bucket prefix queues num interval nocopy local includes command =
   runCtx $ runTop $ do
     conf <- readYaml cf
     let conf' = override cPrefix prefix $ override cBucket bucket $ override cDomain domain conf
@@ -161,4 +162,4 @@ actMain cf storeconf quiesce domain bucket prefix queues num interval nocopy loc
           ok <- check quiesce
           when ok $
             liftIO exitSuccess
-          act queue nocopy local includes command storeconf interval
+          act queue nocopy local includes command interval
