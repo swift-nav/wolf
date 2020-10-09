@@ -12,29 +12,31 @@ import Options.Generic
 -- Program arguments.
 --
 data Args = Args
-  { config  :: FilePath
+  { config    :: FilePath
     -- ^ Configuration file.
   , storeconf :: Bool
     -- ^ Optional copy configuration file to output dorectory. (default: False)
-  , quiesce :: Maybe FilePath
+  , quiesce   :: Maybe FilePath
     -- ^ Optional quiesce file to stop actor.
-  , domain  :: Maybe Text
+  , domain    :: Maybe Text
     -- ^ Optional domain to use.
-  , bucket  :: Maybe Text
+  , bucket    :: Maybe Text
     -- ^ Optional bucket to use.
-  , prefix  :: Maybe Text
+  , prefix    :: Maybe Text
     -- ^ Optional prefix to use.
-  , queue   :: [Text]
+  , queue     :: [Text]
     -- ^ Queue to listen to act on.
-  , num     :: Maybe Int
+  , num       :: Maybe Int
     -- ^ Number of actors to run concurrently.
-  , nocopy  :: Bool
+  , interval  :: Maybe Int
+    -- ^ Interval to heartbeat at.
+  , nocopy    :: Bool
     -- ^ Copy working directory. (default: False)
-  , local   :: Bool
+  , local     :: Bool
     -- ^ Run locally, not in a temp directory. (default: False)
-  , include :: [FilePath]
+  , include   :: [FilePath]
     -- ^ Optional artifacts to filter.
-  , command :: String
+  , command   :: String
     -- ^ Command to run.
   } deriving (Show, Generic)
 
@@ -47,13 +49,13 @@ main = do
   args <- getRecord "Actor"
   actMain
     (config args)
-    (storeconf args)
     (quiesce args)
     (domain args)
     (bucket args)
     (prefix args)
     (queue args)
     (fromMaybe 1 $ num args)
+    (interval args)
     (nocopy args)
     (local args)
     (include args)

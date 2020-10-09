@@ -9,6 +9,8 @@ module Network.AWS.Wolf.Act
   , actMain
   ) where
 
+import Control.Concurrent
+import Control.Concurrent.Async.Lifted
 import Data.Aeson
 import Data.Time
 import Network.AWS.Wolf.Ctx
@@ -68,15 +70,53 @@ run command =
     traceInfo "end" [ "exception" .= (displayException <$> e) ]
     pure e
 
--- | Check if quiesce file is present.
+-- | Check if optional file is present.
 --
 check :: MonadIO m => Maybe FilePath -> m Bool
 check = maybe (pure False) (liftIO . doesFileExist)
 
+-- | Run a heartbeat.
+--
+startHearbeat :: MonadConf c m => Text -> Int -> Text -> FilePath -> m ()
+startHearbeat queue interval token wd = do
+  traceInfo "heartbeat" mempty
+  sd  <- storeDirectory wd
+  msd <- metaDirectory sd
+  let f = msd </> "heartbeat"
+  writeText f mempty
+  liftIO $ threadDelay $ interval * 1000000
+  ok <- check $ pure f
+  if ok then do
+    traceInfo "fail" mempty
+    failActivity token
+    statsIncrement "wolf.act.activity.count" [ "queue" =. queue, "status" =. "fail" ]
+  else do
+    nok <- heartbeatActivity token
+    if not nok then startHearbeat queue interval token msd else do
+      traceInfo "cancel" mempty
+      cancelActivity token
+      statsIncrement "wolf.act.activity.count" [ "queue" =. queue, "status" =. "cancel" ]
+
+-- | Run command.
+--
+startCommand :: MonadConf c m => Text -> String -> Text -> FilePath -> m ()
+startCommand queue command token wd = do
+  traceInfo "command" mempty
+  dd  <- dataDirectory wd
+  sd  <- storeDirectory wd
+  osd <- outputDirectory sd
+  msd <- metaDirectory sd
+  e   <- run command
+  out <- readText (dd </> "output.json")
+  writeText (msd </> (textToString queue <> "_output.json")) out
+  maybe (completeActivity token out) (const $ failActivity token) e
+  let status = textFromString $ maybe "complete" (const "fail") e
+  statsIncrement "wolf.act.activity.count" [ "queue" =. queue, "status" =. status ]
+
 -- | Actor logic - poll for work, download artifacts, run command, upload artifacts.
 --
-act :: MonadConf c m => Text -> Bool -> Bool -> [FilePath] -> String -> Bool -> m ()
-act queue nocopy local includes command storeconf =
+act :: MonadConf c m => Text -> Bool -> Bool -> [FilePath] -> String -> Maybe Int -> m ()
+act queue nocopy local includes command interval =
   preConfCtx [ "label" .= LabelAct ] $
     runAmazonWorkCtx queue $ do
       traceInfo "poll" mempty
@@ -90,34 +130,29 @@ act queue nocopy local includes command storeconf =
           withCurrentWorkDirectory uid' nocopy local $ \wd ->
             runAmazonStoreCtx uid' $ do
               traceInfo "start" [ "dir" .= wd ]
-              t2  <- liftIO getCurrentTime
-              dd  <- dataDirectory wd
-              sd  <- storeDirectory wd
-              isd <- inputDirectory sd
-              osd <- outputDirectory sd
-              msd <- metaDirectory sd
+              t2   <- liftIO getCurrentTime
+              dd   <- dataDirectory wd
+              sd   <- storeDirectory wd
+              isd  <- inputDirectory sd
+              osd  <- outputDirectory sd
+              msd  <- metaDirectory sd
               conf <- view ccConf
-              when storeconf (writeYaml (osd </> "config.yml") conf)
+              writeYaml (osd </> "config.yml") conf
               writeJson (dd </> "control.json") (Control uid')
               writeText (dd </> "input.json") input
               writeText (msd </> (textToString queue <> "_input.json")) input
               download isd includes
-              e <- run command
+              maybe' interval (startCommand queue command token' wd) $ \interval' ->
+                race_ (startHearbeat queue interval' token' wd) (startCommand queue command token' wd)
               upload osd
-              output <- readText (dd </> "output.json")
-              writeText (msd </> (textToString queue <> "_output.json")) output
-              maybe (completeActivity token' output) (const $ failActivity token') e
               t3 <- liftIO getCurrentTime
-              traceInfo "finish" [ "dir" .= wd ]
-              let status = textFromString $ maybe "complete" (const "fail") e
-              statsIncrement "wolf.act.activity.count" [ "queue" =. queue, "status" =. status ]
               statsHistogram "wolf.act.activity.elapsed" (realToFrac (diffUTCTime t3 t2) :: Double) [ "queue" =. queue ]
-
+              traceInfo "finish" [ "dir" .= wd ]
 
 -- | Run actor from main with config file.
 --
-actMain :: MonadControl m => FilePath -> Bool -> Maybe FilePath -> Maybe Text -> Maybe Text -> Maybe Text -> [Text] -> Int -> Bool -> Bool -> [FilePath] -> String -> m ()
-actMain cf storeconf quiesce domain bucket prefix queues num nocopy local includes command =
+actMain :: MonadControl m => FilePath -> Maybe FilePath -> Maybe Text -> Maybe Text -> Maybe Text -> [Text] -> Int -> Maybe Int -> Bool -> Bool -> [FilePath] -> String -> m ()
+actMain cf quiesce domain bucket prefix queues num interval nocopy local includes command =
   runCtx $ runTop $ do
     conf <- readYaml cf
     let conf' = override cPrefix prefix $ override cBucket bucket $ override cDomain domain conf
@@ -127,4 +162,4 @@ actMain cf storeconf quiesce domain bucket prefix queues num nocopy local includ
           ok <- check quiesce
           when ok $
             liftIO exitSuccess
-          act queue nocopy local includes command storeconf
+          act queue nocopy local includes command interval
