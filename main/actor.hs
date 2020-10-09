@@ -28,7 +28,7 @@ data Args = Args
     -- ^ Queue to listen to act on.
   , num       :: Maybe Int
     -- ^ Number of actors to run concurrently.
-  , interval  :: Int
+  , interval  :: Maybe Int
     -- ^ Interval to heartbeat at.
   , nocopy    :: Bool
     -- ^ Copy working directory. (default: False)
@@ -49,7 +49,6 @@ main = do
   args <- getRecord "Actor"
   actMain
     (config args)
-    (storeconf args)
     (quiesce args)
     (domain args)
     (bucket args)
