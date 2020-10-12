@@ -99,7 +99,7 @@ startHearbeat queue interval token wd = do
 
 -- | Run command.
 --
-startCommand :: MonadConf c m => Text -> String -> Text -> FilePath -> m ()
+startCommand :: MonadAmazonStore c m => Text -> String -> Text -> FilePath -> m ()
 startCommand queue command token wd = do
   traceInfo "command" mempty
   dd  <- dataDirectory wd
@@ -107,6 +107,7 @@ startCommand queue command token wd = do
   osd <- outputDirectory sd
   msd <- metaDirectory sd
   e   <- run command
+  upload osd
   out <- readText (dd </> "output.json")
   writeText (msd </> (textToString queue <> "_output.json")) out
   maybe (completeActivity token out) (const $ failActivity token) e
@@ -144,7 +145,6 @@ act queue nocopy local includes command interval =
               download isd includes
               maybe' interval (startCommand queue command token' wd) $ \interval' ->
                 race_ (startHearbeat queue interval' token' wd) (startCommand queue command token' wd)
-              upload osd
               t3 <- liftIO getCurrentTime
               statsHistogram "wolf.act.activity.elapsed" (realToFrac (diffUTCTime t3 t2) :: Double) [ "queue" =. queue ]
               traceInfo "finish" [ "dir" .= wd ]
