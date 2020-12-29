@@ -17,7 +17,8 @@ installs plans. See [examples](examples).
     1. `mkdir ~/.local/bin` if it doesn't exist already.
     2. add `$HOME/.local/bin` to your `PATH` environment variable.
         - This is usually in `~/.bashrc`, `~/.zshrc`, or similar.
-3. Run `stack build`. It should install all dependencies, build binaries, and
+3. Run `stack build`. 
+4. Run `./Shakefile.hs install`. It should install all dependencies, build binaries, and
    export those binaries to `~/.local/bin`.
 
 ## Development
