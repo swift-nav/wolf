@@ -25,7 +25,7 @@ import System.Process
 -- | S3 copy call.
 --
 cp :: MonadIO m => [FilePath] -> m ()
-cp = liftIO . callProcess "aws" . (["s3", "sync", "--quiet"] <>)
+cp = liftIO . callProcess "aws" . (["s3", "sync", "--quiet", "--acl", "bucket-owner-full-control"] <>)
 
 -- | Key to download and upload objects from.
 --
