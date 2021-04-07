@@ -15,4 +15,4 @@ jobs:
           enable-stack: true
       - name: Lint and Build
         run: |
-          ./Shakefile.hs docker:ci
+          ./Shakefile.hs
