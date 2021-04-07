@@ -13,6 +13,7 @@ jobs:
       - uses: haskell/actions/setup@v1
         with:
           enable-stack: true
+      - uses: rwe/actions-hlint-setup@v1
       - name: Lint and Build
         run: |
           ./Shakefile.hs
