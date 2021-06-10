@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  pull_request: ~
+  push:
+    branches: ~
+    tags: ~
+
+jobs:
+  haskell:
+    strategy:
+      matrix:
+        target:
+          - {os: ubuntu-18.04, prefix: "ubuntu"}
+          - {os: macos-10.15, prefix: "macos"}
+    runs-on: ${{ matrix.target.os }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+      - name: Run build
+        shell: bash
+        run: |
+          ./Shakefile.hs docker:travis
