@@ -21,4 +21,4 @@ jobs:
       - name: Run build
         shell: bash
         run: |
-          ./Shakefile.hs docker:travis
+          stack build --test
