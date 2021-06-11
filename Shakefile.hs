@@ -7,35 +7,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
--- | Shake makefile for project.
---
 import Development.Shakers
-
--- | Docker rules
---
-dockerRules' :: Rules ()
-dockerRules' = do
-  let pats =
-        [ "Dockerfile"
-        , "Shakefile.hs"
-        , "stack.yaml"
-        , "wolf.cabal"
-        , "src//*.hs"
-        , "main//*.hs"
-        , "Setup.hs"
-        , "LICENSE"
-        ]
-
-  -- | Docker rules.
-  --
-  dockerRules "." pats
-
-  -- | Travis rule
-  --
-  phony "docker:travis" $ do
-    need [ "mirrored", "docker:logined" ]
-    xdocker_ [ "build", "-t", "travis", "." ]
-    xdocker_ [ "run", "-t", "travis", "./Shakefile.hs" ]
 
 -- | Main entry point.
 --
@@ -60,10 +32,6 @@ main = shakeMain $ do
   -- | Stack rules.
   --
   stackRules "." pats
-
-  -- | Docker rules.
-  --
-  dockerRules'
 
   -- | Default things to run.
   --
