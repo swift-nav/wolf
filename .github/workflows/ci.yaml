@@ -8,7 +8,7 @@ on:
     tags: ~
 
 jobs:
-  haskell:
+  build:
     strategy:
       matrix:
         target:
@@ -22,3 +22,17 @@ jobs:
         shell: bash
         run: |
           stack build --test
+  lint:
+    strategy:
+      matrix:
+        target:
+          - {os: ubuntu-18.04, prefix: "ubuntu"}
+    runs-on: ${{ matrix.target.os }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+      - name: Run build
+        shell: bash
+        run: |
+          stack install hlint
+          ./Shakefile.hs
