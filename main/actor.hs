@@ -31,8 +31,6 @@ data Args = Args
   , nocopy    :: Bool
     -- ^ Copy working directory. (default: False)
   , local     :: Bool
-    -- ^ Run once then exit. (default: False)
-  , runonce :: Bool
     -- ^ Run locally, not in a temp directory. (default: False)
   , include   :: [FilePath]
     -- ^ Optional artifacts to filter.
@@ -58,6 +56,5 @@ main = do
     (interval args)
     (nocopy args)
     (local args)
-    (runonce args)
     (include args)
     (command args)

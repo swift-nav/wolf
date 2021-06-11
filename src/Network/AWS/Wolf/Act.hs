@@ -151,8 +151,8 @@ act queue nocopy local includes command interval =
 
 -- | Run actor from main with config file.
 --
-actMain :: MonadControl m => FilePath -> Maybe FilePath -> Maybe Text -> Maybe Text -> Maybe Text -> [Text] -> Int -> Maybe Int -> Bool -> Bool -> Bool -> [FilePath] -> String -> m ()
-actMain cf quiesce domain bucket prefix queues num interval nocopy local runonce includes command =
+actMain :: MonadControl m => FilePath -> Maybe FilePath -> Maybe Text -> Maybe Text -> Maybe Text -> [Text] -> Int -> Maybe Int -> Bool -> Bool -> [FilePath] -> String -> m ()
+actMain cf quiesce domain bucket prefix queues num interval nocopy local includes command =
   runCtx $ runTop $ do
     conf <- readYaml cf
     let conf' = override cPrefix prefix $ override cBucket bucket $ override cDomain domain conf
@@ -160,6 +160,6 @@ actMain cf quiesce domain bucket prefix queues num interval nocopy local runonce
       runConcurrent $ replicate num $ forever $
         forM_ (cycle queues) $ \queue -> do
           ok <- check quiesce
-          when ok $ liftIO exitSuccess
+          when ok $
+            liftIO exitSuccess
           act queue nocopy local includes command interval
-          when runonce $ liftIO exitSuccess
