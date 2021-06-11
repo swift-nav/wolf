@@ -160,6 +160,6 @@ actMain cf quiesce domain bucket prefix queues num interval nocopy local runonce
       runConcurrent $ replicate num $ forever $
         forM_ (cycle queues) $ \queue -> do
           ok <- check quiesce
-          when (ok || runonce) $
-            liftIO exitSuccess
+          when ok $ liftIO exitSuccess
           act queue nocopy local includes command interval
+          when runonce $ liftIO exitSuccess
