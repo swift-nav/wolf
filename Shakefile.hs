@@ -1,9 +1,8 @@
 #!/usr/bin/env stack
 {- stack
     runghc
-      --package shakers
+    --package shakers
  -}
- 
 
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
