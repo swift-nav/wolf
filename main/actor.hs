@@ -14,8 +14,6 @@ import Options.Generic
 data Args = Args
   { config    :: FilePath
     -- ^ Configuration file.
-  , storeconf :: Bool
-    -- ^ Optional copy configuration file to output dorectory. (default: False)
   , quiesce   :: Maybe FilePath
     -- ^ Optional quiesce file to stop actor.
   , domain    :: Maybe Text
