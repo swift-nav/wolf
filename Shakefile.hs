@@ -1,10 +1,14 @@
 #!/usr/bin/env stack
 {- stack
     runghc
+      --package shakers
  -}
+ 
 
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+
+import Development.Shakers
 
 -- | Main entry point.
 --
