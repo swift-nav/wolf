@@ -83,7 +83,7 @@ runAmazonCtx :: MonadCtx c m => TransT AmazonCtx m a -> m a
 runAmazonCtx action = do
   c <- view ctx
 #if MIN_VERSION_amazonka(1,4,5)
-  e <- newEnv Discover
+  e <- newEnv Discover <&> set envRegion Oregon
 #else
   e <- newEnv Oregon Discover
 #endif
