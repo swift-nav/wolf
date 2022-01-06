@@ -127,10 +127,30 @@ runAmazonWorkCtx queue action = do
   c <- view confCtx <&> cPreamble <>~ preamble
   runTrans (AmazonWorkCtx c queue) (catch action $ throttler action)
 
+-- | Swallow bad request exceptions.
+--
+swallowed :: MonadStatsCtx c m => m a -> m a
+swallowed action = do
+  traceError "swallowed" mempty
+  statsIncrement "wolf.swallowed" mempty
+  catch action $ swallower action
+
+-- | Amazon swallow handler.
+--
+swallower :: MonadStatsCtx c m => m a -> Error -> m a
+swallower action e =
+  case e of
+    ServiceError se ->
+      bool (throwIO e) (swallowed action) $
+        se ^. serviceStatus == badRequest400 &&
+        se ^. serviceCode == "Bad Request"
+    _ ->
+      throwIO e
+
 -- | Run amazon decision context.
 --
 runAmazonDecisionCtx :: MonadConf c m => Plan -> [HistoryEvent] -> TransT AmazonDecisionCtx m a -> m a
 runAmazonDecisionCtx p hes action = do
   let preamble = [ "name" .= (p ^. pStart . tName) ]
   c <- view confCtx <&> cPreamble <>~ preamble
-  runTrans (AmazonDecisionCtx c p hes) action
+  runTrans (AmazonDecisionCtx c p hes) (catch action $ swallower action)
