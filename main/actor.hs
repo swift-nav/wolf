@@ -30,6 +30,8 @@ data Args = Args
     -- ^ Interval to heartbeat at.
   , nocopy    :: Bool
     -- ^ Copy working directory. (default: False)
+  , nos3      :: Bool
+    -- ^ No upload / download from S3. (default: False)
   , local     :: Bool
     -- ^ Run locally, not in a temp directory. (default: False)
   , include   :: [FilePath]
@@ -55,6 +57,7 @@ main = do
     (fromMaybe 1 $ num args)
     (interval args)
     (nocopy args)
+    (nos3 args)
     (local args)
     (include args)
     (command args)

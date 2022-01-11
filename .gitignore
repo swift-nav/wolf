@@ -11,6 +11,7 @@ cabal-dev
 cabal.sandbox.config
 .stack-work/
 .build/
+stack.yaml.lock
 
 *.swo
 *.swp
