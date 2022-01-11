@@ -29,28 +29,35 @@ cp = liftIO . callProcess "aws" . (["s3", "sync", "--quiet", "--acl", "bucket-ow
 
 -- | Key to download and upload objects from.
 --
-key :: MonadAmazonStore c m => m FilePath
-key = do
-  b <- view cBucket <$> view ccConf
-  p <- view ascPrefix
-  pure $ "s3:/" -/- textToString b -/- textToString p
+key :: Text ->  Text -> FilePath
+key bucket prefix =
+  "s3:/" -/- textToString bucket -/- textToString prefix
 
 -- | Download artifacts to the store input directory.
 --
 download :: MonadAmazonStore c m => FilePath -> [FilePath] -> m ()
 download dir includes = do
-  traceInfo "download" [ "dir" .= dir, "includes" .= includes ]
-  let includes' = bool ([ "--exclude", "*" ] <> interleave (repeat "--include") includes) mempty $ null includes
-  k <- key
-  cp $ includes' <> [ k, dir ]
+  b <- view cBucket <$> view ccConf
+  p <- view ascPrefix
+  case b of
+    Just b' -> do
+      traceInfo "download" [ "dir" .= dir, "includes" .= includes ]
+      let includes' = bool ([ "--exclude", "*" ] <> interleave (repeat "--include") includes) mempty $ null includes
+      cp $ includes' <> [key b' p, dir ]
+    _ -> pure ()
+
 
 -- | Upload artifacts from the store output directory.
 --
 upload :: MonadAmazonStore c m => FilePath -> m ()
 upload dir = do
-  traceInfo "upload" [ "dir" .= dir ]
-  k <- key
-  cp [ dir, k ]
+  b <- view cBucket <$> view ccConf
+  p <- view ascPrefix
+  case b of
+    Just b' -> do
+      traceInfo "upload" [ "dir" .= dir ]
+      cp [ dir, key b' p ]
+    _ -> pure ()
 
 -- | callCommand wrapper that maybe returns an exception.
 --
@@ -155,7 +162,7 @@ actMain :: MonadControl m => FilePath -> Maybe FilePath -> Maybe Text -> Maybe T
 actMain cf quiesce domain bucket prefix queues num interval nocopy local includes command =
   runCtx $ runTop $ do
     conf <- readYaml cf
-    let conf' = override cPrefix prefix $ override cBucket bucket $ override cDomain domain conf
+    let conf' = override cPrefix prefix $ override cBucket (Just bucket) $ override cDomain domain conf
     runConfCtx conf' $
       runConcurrent $ replicate num $ forever $
         forM_ (cycle queues) $ \queue -> do

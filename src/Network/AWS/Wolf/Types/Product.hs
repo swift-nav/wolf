@@ -15,7 +15,7 @@ import Network.AWS.Wolf.Prelude
 data Conf = Conf
   { _cDomain :: Text
     -- ^ SWF domain.
-  , _cBucket :: Text
+  , _cBucket :: Maybe Text
     -- ^ S3 bucket.
   , _cPrefix :: Text
     -- ^ S3 prefix.
