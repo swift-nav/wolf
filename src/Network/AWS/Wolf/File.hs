@@ -71,7 +71,7 @@ metaDirectory dir = do
 --
 writeText :: MonadIO m => FilePath -> Maybe Text -> m ()
 writeText file contents =
-  liftIO $ void $ traverse (writeFile file) contents
+  liftIO $ traverse_ (writeFile file) contents
 
 -- | Maybe read text from a file.
 --
