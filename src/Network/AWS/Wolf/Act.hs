@@ -92,7 +92,7 @@ startHearbeat queue interval token wd = do
     statsIncrement "wolf.act.activity.count" [ "queue" =. queue, "status" =. "fail" ]
   else do
     nok <- heartbeatActivity token
-    if not nok then startHearbeat queue interval token msd else do
+    if not nok then startHearbeat queue interval token wd else do
       traceInfo "cancel" mempty
       cancelActivity token
       statsIncrement "wolf.act.activity.count" [ "queue" =. queue, "status" =. "cancel" ]
