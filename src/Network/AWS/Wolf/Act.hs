@@ -83,7 +83,7 @@ startHeartbeat queue interval token wd = do
   sd  <- storeDirectory wd
   msd <- metaDirectory sd
   let f = msd </> "heartbeat"
-  writeText f $ Just "HEARTBEAT"
+  writeText f $ pure mempty
   liftIO $ threadDelay $ interval * 1000000
   ok <- check $ pure f
   if ok then do
