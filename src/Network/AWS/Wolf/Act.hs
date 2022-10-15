@@ -77,13 +77,13 @@ check = maybe (pure False) (liftIO . doesFileExist)
 
 -- | Run a heartbeat.
 --
-startHearbeat :: MonadConf c m => Text -> Int -> Text -> FilePath -> m ()
-startHearbeat queue interval token wd = do
+startHeartbeat :: MonadConf c m => Text -> Int -> Text -> FilePath -> m ()
+startHeartbeat queue interval token wd = do
   traceInfo "heartbeat" mempty
   sd  <- storeDirectory wd
   msd <- metaDirectory sd
   let f = msd </> "heartbeat"
-  writeText f mempty
+  writeText f $ pure mempty
   liftIO $ threadDelay $ interval * 1000000
   ok <- check $ pure f
   if ok then do
@@ -92,7 +92,7 @@ startHearbeat queue interval token wd = do
     statsIncrement "wolf.act.activity.count" [ "queue" =. queue, "status" =. "fail" ]
   else do
     nok <- heartbeatActivity token
-    if not nok then startHearbeat queue interval token msd else do
+    if not nok then startHeartbeat queue interval token wd else do
       traceInfo "cancel" mempty
       cancelActivity token
       statsIncrement "wolf.act.activity.count" [ "queue" =. queue, "status" =. "cancel" ]
@@ -146,7 +146,7 @@ act queue nocopy nos3 local includes command interval =
               unless nos3 $
                 download isd includes
               maybe' interval (startCommand queue nos3 command token' wd) $ \interval' ->
-                race_ (startHearbeat queue interval' token' wd) (startCommand queue nos3 command token' wd)
+                race_ (startHeartbeat queue interval' token' wd) (startCommand queue nos3 command token' wd)
               t3 <- liftIO getCurrentTime
               statsHistogram "wolf.act.activity.elapsed" (realToFrac (diffUTCTime t3 t2) :: Double) [ "queue" =. queue ]
               traceInfo "finish" [ "dir" .= wd ]
