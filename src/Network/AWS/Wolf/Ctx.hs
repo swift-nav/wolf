@@ -143,7 +143,7 @@ swallower action e =
     ServiceError se ->
       bool (throwIO e) (swallowed action) $
         se ^. serviceStatus == badRequest400 &&
-        se ^. serviceCode == "UnknownResource"
+        (se ^. serviceCode == "UnknownResource" || se ^. serviceCode == "Bad Request")
     _ ->
       throwIO e
 
