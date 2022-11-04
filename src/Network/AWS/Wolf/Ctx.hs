@@ -127,7 +127,7 @@ runAmazonWorkCtx queue action = do
   c <- view confCtx <&> cPreamble <>~ preamble
   runTrans (AmazonWorkCtx c queue) (catch action $ throttler action)
 
--- | Swallow bad request exceptions.
+-- | Swallow unknown resource exceptions.
 --
 swallowed :: MonadStatsCtx c m => m a -> m a
 swallowed action = do
@@ -143,7 +143,7 @@ swallower action e =
     ServiceError se ->
       bool (throwIO e) (swallowed action) $
         se ^. serviceStatus == badRequest400 &&
-        se ^. serviceCode == "Bad Request"
+        (se ^. serviceCode == "UnknownResource" || se ^. serviceCode == "Bad Request")
     _ ->
       throwIO e
 
